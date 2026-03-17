@@ -1,5 +1,4 @@
 import './App.css';
-import type { ReactElement } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AppShell from './layout/AppShell';
 import DashboardPage from './features/dashboard/DashboardPage';
@@ -22,60 +21,65 @@ import { useAppAuth } from './shared/auth/AuthContext';
 import { useAuthedQuery } from './shared/auth/useAuthedQuery';
 import { getPrivacyPreferences } from './shared/api/privacy';
 
-function AuthenticatedAppContent() {
+/**
+ * LoggedInContent: Shown when user is authenticated
+ * - Checks for consent requirement
+ * - Shows ConsentPage if no consent yet
+ * - Shows AppShell with app features if consent given
+ */
+function LoggedInContent() {
   const location = useLocation();
-  const publicPaths = new Set(['/verify-email', '/forgot-password', '/reset-password']);
-  const isPublicRoute = publicPaths.has(location.pathname);
-  const privacyQ = useAuthedQuery(`consentGate:${location.pathname}`, getPrivacyPreferences, true);
-  const consentLoading = privacyQ.loading;
+  const privacyQ = useAuthedQuery(`consent:${location.pathname}`, getPrivacyPreferences, true);
   const hasConsent = !!privacyQ.data?.data_usage_consent;
-  const consentRequired = !consentLoading && !privacyQ.error && !hasConsent;
+  const consentLoading = privacyQ.loading;
 
-  const guarded = (element: ReactElement) =>
-    consentRequired ? <Navigate to="/consent" replace /> : element;
-  const protectedPage = (element: ReactElement) => guarded(element);
-
-  if (consentLoading && !isPublicRoute) {
+  // Show loading screen while checking consent status
+  if (consentLoading) {
     return <SplashScreen />;
   }
 
-  return (
-    <>
+  // If user hasn't given consent, show consent page only
+  if (!hasConsent) {
+    return (
       <Routes>
-        {/* Public routes - no auth required */}
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-
-        {/* Protected routes - require auth */}
-        <Route path="/" element={<AppShell />}>
-          <Route index element={protectedPage(<DashboardPage />)} />
-            <Route path="planner" element={protectedPage(<PlannerPage />)}>
-              <Route index element={protectedPage(<Navigate to="/planner/today" replace />)} />
-              <Route path="today" element={protectedPage(<CheckInPage />)} />
-              <Route path="meals" element={protectedPage(<MealPlanPage />)} />
-              <Route path="goals" element={protectedPage(<GoalsPage />)} />
-              <Route path="nutrition" element={protectedPage(<NutritionPreferencesPage />)} />
-              <Route path="recipes" element={protectedPage(<RecipeExplorerPage />)} />
-            </Route>
-          <Route path="trends" element={protectedPage(<TrendsPage />)} />
-          <Route path="goals" element={protectedPage(<Navigate to="/planner/goals" replace />)} />
-          <Route path="checkin" element={protectedPage(<Navigate to="/planner/today" replace />)} />
-          <Route path="profile" element={protectedPage(<ProfilePage />)} />
-          <Route path="settings" element={protectedPage(<SettingsPage />)} />
-          <Route path="nutrition/preferences" element={protectedPage(<Navigate to="/planner/nutrition" replace />)} />
-          <Route path="consent" element={protectedPage(hasConsent ? <Navigate to="/" replace /> : <ConsentPage />)} />
-        </Route>
+        <Route path="*" element={<ConsentPage />} />
       </Routes>
+    );
+  }
 
-    </>
+  // User has consent, show full app
+  return (
+    <Routes>
+      <Route path="/" element={<AppShell />}>
+        <Route index element={<DashboardPage />} />
+        <Route path="planner" element={<PlannerPage />}>
+          <Route index element={<Navigate to="/planner/today" replace />} />
+          <Route path="today" element={<CheckInPage />} />
+          <Route path="meals" element={<MealPlanPage />} />
+          <Route path="goals" element={<GoalsPage />} />
+          <Route path="nutrition" element={<NutritionPreferencesPage />} />
+          <Route path="recipes" element={<RecipeExplorerPage />} />
+        </Route>
+        <Route path="trends" element={<TrendsPage />} />
+        <Route path="goals" element={<Navigate to="/planner/goals" replace />} />
+        <Route path="checkin" element={<Navigate to="/planner/today" replace />} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route path="nutrition/preferences" element={<Navigate to="/planner/nutrition" replace />} />
+      </Route>
+    </Routes>
   );
 }
 
-function UnauthenticatedAppContent() {
+/**
+ * LoggedOutContent: Shown when user is NOT authenticated
+ * - Shows public auth pages (verify-email, forgot-password, reset-password)
+ * - Shows LoginModal for all other paths
+ */
+function LoggedOutContent() {
   const location = useLocation();
-  const publicPaths = new Set(['/verify-email', '/forgot-password', '/reset-password']);
-  const isPublicRoute = publicPaths.has(location.pathname);
+  const publicAuthPaths = new Set(['/verify-email', '/forgot-password', '/reset-password']);
+  const isPublicAuthPage = publicAuthPaths.has(location.pathname);
 
   return (
     <>
@@ -85,22 +89,24 @@ function UnauthenticatedAppContent() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<div />} />
       </Routes>
-      {!isPublicRoute && <LoginModal />}
+      {/* Show login modal on any non-public-auth page */}
+      {!isPublicAuthPage && <LoginModal />}
     </>
   );
 }
 
-// App: Uses centralized AuthContext from AuthProvider
-// All auth checks happen in AuthContext, App just consumes unified state
+/**
+ * Main App Component
+ * Routes between LoggedInContent and LoggedOutContent based on auth state
+ */
 function App() {
   const { isAuthenticated, isLoading } = useAppAuth();
 
-  // Show splash screen while loading auth state
   if (isLoading) return <SplashScreen />;
 
   return (
-    <BrowserRouter key={isAuthenticated ? "auth" : "guest"}>
-      {isAuthenticated ? <AuthenticatedAppContent /> : <UnauthenticatedAppContent />}
+    <BrowserRouter key={isAuthenticated ? "authenticated" : "logged-out"}>
+      {isAuthenticated ? <LoggedInContent /> : <LoggedOutContent />}
     </BrowserRouter>
   );
 }

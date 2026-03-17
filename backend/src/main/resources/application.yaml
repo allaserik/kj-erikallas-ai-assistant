@@ -4,26 +4,3 @@ spring:
     description: A wellness application to track and improve your health metrics.
   profiles:
     active: local
-
-# Demo mode configuration
-demo:
-  mode: ${DEMO_MODE:false}
-
-# AI configuration
-ai:
-  meal-generation:
-    enabled: ${AI_MEAL_GENERATION_ENABLED:true}
-    include-alternatives: true
-  insight-generation:
-    enabled: ${AI_INSIGHT_GENERATION_ENABLED:true}
-
-# OpenAI configuration
-openai:
-  api-key: ${OPENAI_API_KEY:-}
-  model: ${OPENAI_MODEL:-gpt-4o-mini}
-
-# Recipe import
-nutrition:
-  raw-import:
-    enabled: ${NUTRITION_RAW_IMPORT_ENABLED:false}
-    limit: ${NUTRITION_RAW_IMPORT_LIMIT:500}

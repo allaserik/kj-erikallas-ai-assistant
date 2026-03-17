@@ -3,6 +3,7 @@
     "java.configuration.updateBuildConfiguration": "automatic",
     "java.format.settings.url": ".vscode/java-formatter.xml",
     "chat.tools.terminal.autoApprove": {
-        "npm run build": true
+        "npm run build": true,
+        "./mvnw": true
     }
 }
