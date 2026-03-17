@@ -13,6 +13,7 @@ import RecipeExplorerPage from './features/nutrition/RecipeExplorerPage';
 import ShoppingListPage from './features/nutrition/ShoppingListPage';
 import PlannerPage from './features/planner/PlannerPage';
 import MealPlanPage from './features/planner/MealPlanPage';
+import { MealManagementPage } from './features/planner/MealManagementPage';
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage';
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
@@ -61,6 +62,7 @@ function LoggedInContent() {
           <Route path="nutrition" element={<NutritionPreferencesPage />} />
           <Route path="recipes" element={<RecipeExplorerPage />} />
           <Route path="shopping-list" element={<ShoppingListPage />} />
+          <Route path="manage-meals" element={<MealManagementPage />} />
         </Route>
         <Route path="trends" element={<TrendsPage />} />
         <Route path="goals" element={<Navigate to="/planner/goals" replace />} />
