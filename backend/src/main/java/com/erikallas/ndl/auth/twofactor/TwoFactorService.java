@@ -23,13 +23,13 @@ public class TwoFactorService {
     private final TwoFactorSecretRepository repository;
     private final DataEncryptionService dataEncryptionService;
     private final SecureRandom secureRandom = new SecureRandom();
+    private final String issuer;
 
-    @Value("${app.two-factor.issuer:NumbersDontLie}")
-    private String issuer;
-
-    public TwoFactorService(TwoFactorSecretRepository repository, DataEncryptionService dataEncryptionService) {
+    public TwoFactorService(TwoFactorSecretRepository repository, DataEncryptionService dataEncryptionService,
+            @Value("${app.two-factor.issuer:NumbersDontLie}") String issuer) {
         this.repository = repository;
         this.dataEncryptionService = dataEncryptionService;
+        this.issuer = issuer;
     }
 
     public record SetupResult(String secret, String otpauthUri) {
@@ -44,26 +44,20 @@ public class TwoFactorService {
         String encrypted = encryptSecret(secret);
         OffsetDateTime now = OffsetDateTime.now();
 
-        TwoFactorSecretEntity entity = repository.findByUserId(userId)
-                .map(existing -> {
-                    existing.setSecretEncrypted(encrypted);
-                    existing.setEnabled(false);
-                    existing.setVerifiedAt(null);
-                    existing.setUpdatedAt(now);
-                    return existing;
-                })
-                .orElseGet(() -> new TwoFactorSecretEntity(userId, encrypted, false, null, now, now));
+        TwoFactorSecretEntity entity = repository.findByUserId(userId).map(existing -> {
+            existing.setSecretEncrypted(encrypted);
+            existing.setEnabled(false);
+            existing.setVerifiedAt(null);
+            existing.setUpdatedAt(now);
+            return existing;
+        }).orElseGet(() -> new TwoFactorSecretEntity(userId, encrypted, false, null, now, now));
 
         repository.save(entity);
 
         String label = URLEncoder.encode(accountLabel, StandardCharsets.UTF_8);
         String encodedIssuer = URLEncoder.encode(issuer, StandardCharsets.UTF_8);
-        String otpauth = "otpauth://totp/" + encodedIssuer + ":" + label
-                + "?secret=" + secret
-                + "&issuer=" + encodedIssuer
-                + "&algorithm=SHA1"
-                + "&digits=6"
-                + "&period=30";
+        String otpauth = "otpauth://totp/" + encodedIssuer + ":" + label + "?secret=" + secret + "&issuer="
+                + encodedIssuer + "&algorithm=SHA1" + "&digits=6" + "&period=30";
 
         return new SetupResult(secret, otpauth);
     }
@@ -154,10 +148,8 @@ public class TwoFactorService {
             byte[] hash = mac.doFinal(data);
 
             int offset = hash[hash.length - 1] & 0x0F;
-            int binary = ((hash[offset] & 0x7F) << 24)
-                    | ((hash[offset + 1] & 0xFF) << 16)
-                    | ((hash[offset + 2] & 0xFF) << 8)
-                    | (hash[offset + 3] & 0xFF);
+            int binary = ((hash[offset] & 0x7F) << 24) | ((hash[offset + 1] & 0xFF) << 16)
+                    | ((hash[offset + 2] & 0xFF) << 8) | (hash[offset + 3] & 0xFF);
             int otp = binary % (int) Math.pow(10, CODE_DIGITS);
             return String.format("%06d", otp);
         } catch (Exception e) {

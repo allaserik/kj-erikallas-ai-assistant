@@ -131,3 +131,24 @@ export type PaginatedResponse<T> = {
     has_previous: boolean;
     has_next: boolean;
 };
+
+// Nutrition Dashboard
+export type NutrientProgress = {
+    name: string; // "Protein", "Calories", etc.
+    actual: number;
+    target: number;
+    unit: string; // "g", "kcal"
+    percentageOfTarget: number;
+    surplus: number;
+    status: "good" | "low" | "high";
+};
+
+export type DailySummary = {
+    date: string;
+    totalMeals: number;
+    calories: NutrientProgress;
+    protein: NutrientProgress;
+    carbs: NutrientProgress;
+    fats: NutrientProgress;
+    summary: string;
+};

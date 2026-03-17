@@ -8,8 +8,9 @@ import { getHealthSummary } from "../../shared/api/summary";
 import { getWeeklySummary, getMonthlySummary } from "../../shared/api/summaries";
 import { getPrivacyPreferences } from "../../shared/api/privacy";
 import { getActivityHistory } from "../../shared/api/activity";
+import { getDailySummary } from "../../shared/api/nutrition";
 import { useAppAuth } from "../../shared/auth/AuthContext";
-import type { UserProfile, HealthProfile, WeightEntry, Goal, Insight, HealthSummary, PeriodSummary } from "../../shared/types";
+import type { UserProfile, HealthProfile, WeightEntry, Goal, Insight, HealthSummary, PeriodSummary, DailySummary } from "../../shared/types";
 
 export interface DashboardData {
     me: UserProfile | null;
@@ -20,6 +21,7 @@ export interface DashboardData {
     summary: HealthSummary | null;
     weeklySummary: PeriodSummary | null;
     monthlySummary: PeriodSummary | null;
+    nutritionSummary: DailySummary | null;
     activeDaysLast7: number;
     insightConsentRequired: boolean;
 }
@@ -71,6 +73,7 @@ export function useDashboardData(): DashboardState {
     const summaryQ = useAuthedQuery("summary", getHealthSummary, meReady && hasProfile && hasWeight);
     const weeklySummaryQ = useAuthedQuery("weeklySummary", getWeeklySummary, meReady && hasProfile && hasWeight);
     const monthlySummaryQ = useAuthedQuery("monthlySummary", getMonthlySummary, meReady && hasProfile && hasWeight);
+    const nutritionSummaryQ = useAuthedQuery("nutritionSummary", getDailySummary, meReady);
 
     // Insights require explicit data usage consent and a completed profile context.
     const insightQ = useAuthedQuery("latestInsight", getLatestInsight, meReady && hasProfile && hasConsent);
@@ -86,6 +89,7 @@ export function useDashboardData(): DashboardState {
         summaryQ.loading ||
         weeklySummaryQ.loading ||
         monthlySummaryQ.loading ||
+        nutritionSummaryQ.loading ||
         insightQ.loading;
 
     // Determine overall error state (return first error found, ignore summary errors)
@@ -126,6 +130,7 @@ export function useDashboardData(): DashboardState {
         summary: summaryQ.data || null,
         weeklySummary: weeklySummaryQ.data || null,
         monthlySummary: monthlySummaryQ.data || null,
+        nutritionSummary: nutritionSummaryQ.data || null,
         activeDaysLast7,
         insightConsentRequired,
         isLoading,

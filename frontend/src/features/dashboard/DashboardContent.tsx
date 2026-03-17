@@ -4,6 +4,7 @@ import { BMICard } from "./components/BMICard";
 import { WellnessScoreCard } from "./components/WellnessScoreCard";
 import { ActiveGoalsCard } from "./components/ActiveGoalsCard";
 import { InsightCard } from "./components/InsightCard";
+import { NutritionSummaryCard } from "./components/NutritionSummaryCard";
 import { PeriodSummaryCard } from "./components/PeriodSummaryCard";
 import { QuickNav } from "./components/QuickNav";
 import { ActivityStreakCard } from "./components/ActivityStreakCard";
@@ -111,6 +112,7 @@ export function DashboardContent({
                     <ActiveGoalsCard goals={data.activeGoals} />
                     <ActivityStreakCard activeDaysLast7={data.activeDaysLast7} />
                     <InsightCard insight={data.insight} consentRequired={data.insightConsentRequired} />
+                    {data.nutritionSummary && <NutritionSummaryCard summary={data.nutritionSummary} />}
                     <ComparisonViewCard
                         summary={data.summary}
                         weeklySummary={data.weeklySummary}
