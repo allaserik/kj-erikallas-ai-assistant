@@ -12,6 +12,7 @@ import ConsentPage from './features/consent/ConsentPage';
 import NutritionPreferencesPage from './features/nutrition/NutritionPreferencesPage';
 import RecipeExplorerPage from './features/nutrition/RecipeExplorerPage';
 import PlannerPage from './features/planner/PlannerPage';
+import MealPlanPage from './features/planner/MealPlanPage';
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage';
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
@@ -52,6 +53,7 @@ function AuthenticatedAppContent() {
             <Route path="planner" element={protectedPage(<PlannerPage />)}>
               <Route index element={protectedPage(<Navigate to="/planner/today" replace />)} />
               <Route path="today" element={protectedPage(<CheckInPage />)} />
+              <Route path="meals" element={protectedPage(<MealPlanPage />)} />
               <Route path="goals" element={protectedPage(<GoalsPage />)} />
               <Route path="nutrition" element={protectedPage(<NutritionPreferencesPage />)} />
               <Route path="recipes" element={protectedPage(<RecipeExplorerPage />)} />

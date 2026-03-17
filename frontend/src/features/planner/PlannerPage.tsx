@@ -2,6 +2,7 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 
 const tabs = [
     { to: "/planner/today", label: "Today" },
+    { to: "/planner/meals", label: "Meals" },
     { to: "/planner/goals", label: "Goals" },
     { to: "/planner/nutrition", label: "Nutrition" },
     { to: "/planner/recipes", label: "Recipes" },

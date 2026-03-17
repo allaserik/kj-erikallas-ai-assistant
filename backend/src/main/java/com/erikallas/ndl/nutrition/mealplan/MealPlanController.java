@@ -7,6 +7,9 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDate;
+import java.util.UUID;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,12 +37,26 @@ public class MealPlanController {
     }
 
     @PostMapping("/api/meal-plans/generate")
-    public ApiSuccess<MealPlanService.GenerateResponse> generate(
+    public ApiSuccess<MealPlanModels.GenerateResponse> generate(
             @Valid @RequestBody GenerateMealPlanRequest request,
             JwtAuthenticationToken auth) {
         var user = userService.ensureUserFromJwt(auth);
         var result = mealPlanService.generate(user.getId(),
-                new MealPlanService.GenerateCommand(request.duration, request.startDate));
+                new MealPlanModels.GenerateCommand(request.duration, request.startDate));
         return ApiSuccess.of(result);
+    }
+
+    @GetMapping("/api/meal-plans/{mealPlanId}")
+    public ApiSuccess<MealPlanModels.GenerateResponse> getById(
+            @PathVariable("mealPlanId") UUID mealPlanId,
+            JwtAuthenticationToken auth) {
+        var user = userService.ensureUserFromJwt(auth);
+        return ApiSuccess.of(mealPlanService.getById(user.getId(), mealPlanId));
+    }
+
+    @GetMapping("/api/meal-plans/latest")
+    public ApiSuccess<MealPlanModels.GenerateResponse> getLatest(JwtAuthenticationToken auth) {
+        var user = userService.ensureUserFromJwt(auth);
+        return ApiSuccess.of(mealPlanService.getLatest(user.getId()));
     }
 }
