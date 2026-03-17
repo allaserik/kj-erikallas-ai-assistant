@@ -10,6 +10,7 @@ import { QuickNav } from "./components/QuickNav";
 import { ActivityStreakCard } from "./components/ActivityStreakCard";
 import { ComparisonViewCard } from "./components/ComparisonViewCard";
 import { BMICardSkeleton, WellnessScoreCardSkeleton, GoalCardSkeleton, InsightCardSkeleton } from "./components/SkeletonCards";
+import { NutritionTrendChart } from "../nutrition/NutritionTrendChart";
 import type { DashboardState } from "./useDashboardData";
 import { Link } from "react-router-dom";
 
@@ -113,6 +114,17 @@ export function DashboardContent({
                     <ActivityStreakCard activeDaysLast7={data.activeDaysLast7} />
                     <InsightCard insight={data.insight} consentRequired={data.insightConsentRequired} />
                     {data.nutritionSummary && <NutritionSummaryCard summary={data.nutritionSummary} />}
+                    <Card>
+                        <CardBody>
+                            <div className="mb-4">
+                                <h2 className="text-lg font-semibold text-slate-900">Nutrition Trends</h2>
+                                <p className="text-sm text-slate-600 mt-1">
+                                    Visualize your caloric intake trends over time
+                                </p>
+                            </div>
+                            <NutritionTrendChart daysToShow={14} />
+                        </CardBody>
+                    </Card>
                     <ComparisonViewCard
                         summary={data.summary}
                         weeklySummary={data.weeklySummary}

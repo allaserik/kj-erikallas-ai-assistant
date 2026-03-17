@@ -112,3 +112,129 @@ export function getMealsForDateRange(
 export function deleteMealLog(mealLogId: string, token: string): Promise<void> {
     return api.delete(`/api/nutrition/meals/${mealLogId}`, token);
 }
+
+// ===== TREND TYPES & FUNCTIONS =====
+
+export interface DailyTrendPoint {
+    date: string;
+    consumed: number;
+    target: number;
+    deficit: number; // positive = under target, negative = over target
+}
+
+export interface WeeklyTrendPoint {
+    weekStart: string;
+    weekEnd: string;
+    totalConsumed: number;
+    totalTarget: number;
+    avgDailyDeficit: number;
+    daysLogged: number;
+}
+
+export interface MonthlySummaryPoint {
+    monthStart: string;
+    monthEnd: string;
+    totalConsumed: number;
+    totalTarget: number;
+    totalDeficit: number;
+    daysLogged: number;
+}
+
+/**
+ * Get daily caloric trends for a date range.
+ */
+export function getDailyTrends(
+    startDate: string,
+    endDate: string,
+    token: string
+): Promise<DailyTrendPoint[] | null> {
+    return api
+        .get<DailyTrendPoint[] | null | ApiResponse<DailyTrendPoint[] | null>>(
+            `/api/nutrition/dashboard/trends/daily?startDate=${startDate}&endDate=${endDate}`,
+            token
+        )
+        .then((response) => unwrapApiData(response));
+}
+
+/**
+ * Get weekly aggregated trends.
+ */
+export function getWeeklyTrends(
+    startDate: string,
+    endDate: string,
+    token: string
+): Promise<WeeklyTrendPoint[] | null> {
+    return api
+        .get<WeeklyTrendPoint[] | null | ApiResponse<WeeklyTrendPoint[] | null>>(
+            `/api/nutrition/dashboard/trends/weekly?startDate=${startDate}&endDate=${endDate}`,
+            token
+        )
+        .then((response) => unwrapApiData(response));
+}
+
+/**
+ * Get monthly aggregated trends.
+ */
+export function getMonthlySummaries(
+    startDate: string,
+    endDate: string,
+    token: string
+): Promise<MonthlySummaryPoint[] | null> {
+    return api
+        .get<MonthlySummaryPoint[] | null | ApiResponse<MonthlySummaryPoint[] | null>>(
+            `/api/nutrition/dashboard/trends/monthly?startDate=${startDate}&endDate=${endDate}`,
+            token
+        )
+        .then((response) => unwrapApiData(response));
+}
+
+// ===== SHOPPING LIST TYPES & FUNCTIONS =====
+
+export interface ShoppingListItem {
+    id: string;
+    label: string;
+    unit: string;
+    quantity: number;
+    category: string;
+    excluded: boolean;
+    notes: string | null;
+}
+
+export interface ShoppingListResponse {
+    itemCount: number;
+    allItems: ShoppingListItem[];
+    categorized: Record<string, ShoppingListItem[]>;
+}
+
+/**
+ * Generate shopping list from meal IDs.
+ */
+export function generateShoppingListFromMeals(
+    mealIds: string[],
+    token: string
+): Promise<ShoppingListResponse | null> {
+    return api
+        .post<ShoppingListResponse | null | ApiResponse<ShoppingListResponse | null>>(
+            "/api/nutrition/shopping-list/from-meals",
+            { mealIds },
+            token
+        )
+        .then((response) => unwrapApiData(response));
+}
+
+/**
+ * Generate shopping list from date range.
+ */
+export function generateShoppingListFromDateRange(
+    startDate: string,
+    endDate: string,
+    token: string
+): Promise<ShoppingListResponse | null> {
+    return api
+        .post<ShoppingListResponse | null | ApiResponse<ShoppingListResponse | null>>(
+            "/api/nutrition/shopping-list/from-date-range",
+            { startDate, endDate },
+            token
+        )
+        .then((response) => unwrapApiData(response));
+}

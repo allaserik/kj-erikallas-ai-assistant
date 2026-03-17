@@ -10,6 +10,7 @@ import SettingsPage from './features/settings/SettingsPage';
 import ConsentPage from './features/consent/ConsentPage';
 import NutritionPreferencesPage from './features/nutrition/NutritionPreferencesPage';
 import RecipeExplorerPage from './features/nutrition/RecipeExplorerPage';
+import ShoppingListPage from './features/nutrition/ShoppingListPage';
 import PlannerPage from './features/planner/PlannerPage';
 import MealPlanPage from './features/planner/MealPlanPage';
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage';
@@ -59,6 +60,7 @@ function LoggedInContent() {
           <Route path="goals" element={<GoalsPage />} />
           <Route path="nutrition" element={<NutritionPreferencesPage />} />
           <Route path="recipes" element={<RecipeExplorerPage />} />
+          <Route path="shopping-list" element={<ShoppingListPage />} />
         </Route>
         <Route path="trends" element={<TrendsPage />} />
         <Route path="goals" element={<Navigate to="/planner/goals" replace />} />
