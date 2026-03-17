@@ -43,6 +43,13 @@ Bonus/extra functionality implemented:
 - Frontend: React, TypeScript, Vite
 - Auth: Local JWT + Auth0 resource-server validation for OAuth tokens
 - AI: OpenAI Responses API (optional), strict JSON schema output
+- Email: JavaMailSender with SMTP/MailHog support
+- Containerization: Docker Compose for multi-service orchestration
+
+## Demo Data
+[Recipes from Kaggle](https://www.kaggle.com/code/snowholt/chefbelle-an-ai-kitchen-assistant?select=RAW_recipes.csv)
+[Nutrition Data from Kaggle](https://www.kaggle.com/code/snowholt/chefbelle-an-ai-kitchen-assistant?select=cleaned_nutrition_dataset.csv)
+Activity and weight data generated with realistic trends and noise based on common patterns in health tracking datasets.
 
 ## Setup And Installation
 
