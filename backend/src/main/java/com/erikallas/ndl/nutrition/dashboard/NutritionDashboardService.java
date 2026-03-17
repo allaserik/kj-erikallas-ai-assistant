@@ -1,7 +1,6 @@
 package com.erikallas.ndl.nutrition.dashboard;
 
-import com.erikallas.ndl.nutrition.mealplan.MealPlanQueryService;
-import com.erikallas.ndl.nutrition.mealplan.MealPlanModels;
+import com.erikallas.ndl.nutrition.meallog.MealIntakeLogService;
 import com.erikallas.ndl.nutrition.preferences.NutritionPreferencesService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -32,42 +31,37 @@ public class NutritionDashboardService {
     private static final int TOLERANCE_LOWER = 95;
     private static final int TOLERANCE_UPPER = 105;
 
-    private final MealPlanQueryService mealPlanQueryService;
+    private final MealIntakeLogService mealIntakeLogService;
     private final NutritionPreferencesService preferencesService;
 
-    public NutritionDashboardService(MealPlanQueryService mealPlanQueryService,
+    public NutritionDashboardService(MealIntakeLogService mealIntakeLogService,
             NutritionPreferencesService preferencesService) {
-        this.mealPlanQueryService = mealPlanQueryService;
+        this.mealIntakeLogService = mealIntakeLogService;
         this.preferencesService = preferencesService;
     }
 
     /**
      * Get today's nutrition summary.
      * 
-     * Flow: 1. Fetch latest meal plan 2. Filter today's meals 3. Sum nutrition from
-     * meals 4. Get user targets 5. Compare and calculate percentages 6. Return
-     * formatted summary
+     * Flow: 1. Fetch meals actually logged/consumed for today 2. Sum nutrition from
+     * logged meals 3. Get user targets 4. Compare and calculate percentages 5.
+     * Return formatted summary
      */
     @Transactional(readOnly = true)
     public NutritionSummaryModels.DailySummary getDailySummary(UUID userId) {
         LocalDate today = LocalDate.now();
 
         try {
-            // Step 1: Get latest meal plan for user
-            var mealPlan = mealPlanQueryService.getLatest(userId);
+            // Step 1: Get meals logged for today (actual consumption)
+            var todaysMeals = mealIntakeLogService.getMealsForDay(userId, today);
 
-            if (mealPlan == null) {
-                logger.debug("No meal plan found for user {}, returning empty summary", userId);
-                return createEmptySummary(today);
-            }
+            // Step 2: Sum today's meals nutrition
+            AggregatedNutrition totalNutrition = aggregateMealLogs(todaysMeals);
 
-            // Step 2 & 3: Extract and sum today's meals
-            AggregatedNutrition totalNutrition = aggregateTodaysMeals(mealPlan, today);
-
-            // Step 4: Get user targets
+            // Step 3: Get user targets
             var preferences = preferencesService.getOrCreateWithPrefill(userId);
 
-            // Step 5 & 6: Compare and format
+            // Step 4 & 5: Compare and format
             return buildSummary(today, totalNutrition, preferences);
 
         } catch (Exception e) {
@@ -77,31 +71,33 @@ public class NutritionDashboardService {
     }
 
     /**
-     * Extract and sum only today's meals from the meal plan.
+     * Aggregate nutrition from meal logs.
      * 
-     * Why keep this separate? - A meal plan might span multiple days, we only want
-     * today - Can aggregate by different groupings later (week, etc.) - Easy to
-     * test independently - Clear responsibility: just add things up
+     * Sums up all nutrition values from logged meals. Uses snapshots stored at log
+     * time (not live recipe values) to preserve historical accuracy.
      */
-    private AggregatedNutrition aggregateTodaysMeals(MealPlanModels.GenerateResponse mealPlan, LocalDate targetDate) {
+    private AggregatedNutrition aggregateMealLogs(
+            java.util.List<com.erikallas.ndl.nutrition.meallog.MealIntakeLogEntity> meals) {
         BigDecimal totalCalories = BigDecimal.ZERO;
         BigDecimal totalProtein = BigDecimal.ZERO;
         BigDecimal totalCarbs = BigDecimal.ZERO;
         BigDecimal totalFats = BigDecimal.ZERO;
         int mealCount = 0;
 
-        // Loop through all days and find today's
-        for (var dayPlan : mealPlan.days()) {
-            // Only sum meals from the target date
-            if (dayPlan.date().isEqual(targetDate)) {
-                for (var meal : dayPlan.meals()) {
-                    totalCalories = totalCalories.add(meal.caloriesKcal());
-                    totalProtein = totalProtein.add(meal.proteinG());
-                    totalCarbs = totalCarbs.add(meal.carbsG());
-                    totalFats = totalFats.add(meal.fatsG());
-                    mealCount++;
-                }
+        for (var meal : meals) {
+            if (meal.getCaloriesKcal() != null) {
+                totalCalories = totalCalories.add(meal.getCaloriesKcal());
             }
+            if (meal.getProteinG() != null) {
+                totalProtein = totalProtein.add(meal.getProteinG());
+            }
+            if (meal.getCarbsG() != null) {
+                totalCarbs = totalCarbs.add(meal.getCarbsG());
+            }
+            if (meal.getFatsG() != null) {
+                totalFats = totalFats.add(meal.getFatsG());
+            }
+            mealCount++;
         }
 
         return new AggregatedNutrition(totalCalories, totalProtein, totalCarbs, totalFats, mealCount);
@@ -216,7 +212,7 @@ public class NutritionDashboardService {
                 new NutritionSummaryModels.NutrientProgress("Protein", zero, zero, "g", 0, zero, "neutral"),
                 new NutritionSummaryModels.NutrientProgress("Carbs", zero, zero, "g", 0, zero, "neutral"),
                 new NutritionSummaryModels.NutrientProgress("Fats", zero, zero, "g", 0, zero, "neutral"),
-                "No meal plan for today yet", "generated");
+                "No meals logged yet. Start logging your meals to track your nutrition.", "generated");
     }
 
     /**
