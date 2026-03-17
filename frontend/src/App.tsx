@@ -10,6 +10,7 @@ import ProfilePage from './features/profile/ProfilePage';
 import SettingsPage from './features/settings/SettingsPage';
 import ConsentPage from './features/consent/ConsentPage';
 import NutritionPreferencesPage from './features/nutrition/NutritionPreferencesPage';
+import RecipeExplorerPage from './features/nutrition/RecipeExplorerPage';
 import PlannerPage from './features/planner/PlannerPage';
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage';
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage';
@@ -20,17 +21,18 @@ import { useAppAuth } from './shared/auth/AuthContext';
 import { useAuthedQuery } from './shared/auth/useAuthedQuery';
 import { getPrivacyPreferences } from './shared/api/privacy';
 
-function AppContent({ isAuthenticated }: { isAuthenticated: boolean }) {
+function AuthenticatedAppContent() {
   const location = useLocation();
   const publicPaths = new Set(['/verify-email', '/forgot-password', '/reset-password']);
   const isPublicRoute = publicPaths.has(location.pathname);
-  const privacyQ = useAuthedQuery(`consentGate:${location.pathname}`, getPrivacyPreferences, isAuthenticated);
-  const consentLoading = isAuthenticated && privacyQ.loading;
+  const privacyQ = useAuthedQuery(`consentGate:${location.pathname}`, getPrivacyPreferences, true);
+  const consentLoading = privacyQ.loading;
   const hasConsent = !!privacyQ.data?.data_usage_consent;
-  const consentRequired = isAuthenticated && !consentLoading && !privacyQ.error && !hasConsent;
+  const consentRequired = !consentLoading && !privacyQ.error && !hasConsent;
 
   const guarded = (element: ReactElement) =>
     consentRequired ? <Navigate to="/consent" replace /> : element;
+  const protectedPage = (element: ReactElement) => guarded(element);
 
   if (consentLoading && !isPublicRoute) {
     return <SplashScreen />;
@@ -46,25 +48,42 @@ function AppContent({ isAuthenticated }: { isAuthenticated: boolean }) {
 
         {/* Protected routes - require auth */}
         <Route path="/" element={<AppShell />}>
-          <Route index element={guarded(<DashboardPage />)} />
-          <Route path="planner" element={guarded(<PlannerPage />)}>
-            <Route index element={<Navigate to="/planner/today" replace />} />
-            <Route path="today" element={<CheckInPage />} />
-            <Route path="goals" element={<GoalsPage />} />
-            <Route path="nutrition" element={<NutritionPreferencesPage />} />
-          </Route>
-          <Route path="trends" element={guarded(<TrendsPage />)} />
-          <Route path="goals" element={<Navigate to="/planner/goals" replace />} />
-          <Route path="checkin" element={<Navigate to="/planner/today" replace />} />
-          <Route path="profile" element={guarded(<ProfilePage />)} />
-          <Route path="settings" element={guarded(<SettingsPage />)} />
-          <Route path="nutrition/preferences" element={<Navigate to="/planner/nutrition" replace />} />
-          <Route path="consent" element={hasConsent ? <Navigate to="/" replace /> : <ConsentPage />} />
+          <Route index element={protectedPage(<DashboardPage />)} />
+            <Route path="planner" element={protectedPage(<PlannerPage />)}>
+              <Route index element={protectedPage(<Navigate to="/planner/today" replace />)} />
+              <Route path="today" element={protectedPage(<CheckInPage />)} />
+              <Route path="goals" element={protectedPage(<GoalsPage />)} />
+              <Route path="nutrition" element={protectedPage(<NutritionPreferencesPage />)} />
+              <Route path="recipes" element={protectedPage(<RecipeExplorerPage />)} />
+            </Route>
+          <Route path="trends" element={protectedPage(<TrendsPage />)} />
+          <Route path="goals" element={protectedPage(<Navigate to="/planner/goals" replace />)} />
+          <Route path="checkin" element={protectedPage(<Navigate to="/planner/today" replace />)} />
+          <Route path="profile" element={protectedPage(<ProfilePage />)} />
+          <Route path="settings" element={protectedPage(<SettingsPage />)} />
+          <Route path="nutrition/preferences" element={protectedPage(<Navigate to="/planner/nutrition" replace />)} />
+          <Route path="consent" element={protectedPage(hasConsent ? <Navigate to="/" replace /> : <ConsentPage />)} />
         </Route>
       </Routes>
 
-      {/* Show login modal on protected routes when not authenticated */}
-      {!isAuthenticated && !isPublicRoute && <LoginModal />}
+    </>
+  );
+}
+
+function UnauthenticatedAppContent() {
+  const location = useLocation();
+  const publicPaths = new Set(['/verify-email', '/forgot-password', '/reset-password']);
+  const isPublicRoute = publicPaths.has(location.pathname);
+
+  return (
+    <>
+      <Routes>
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="*" element={<div />} />
+      </Routes>
+      {!isPublicRoute && <LoginModal />}
     </>
   );
 }
@@ -78,8 +97,8 @@ function App() {
   if (isLoading) return <SplashScreen />;
 
   return (
-    <BrowserRouter>
-      <AppContent isAuthenticated={isAuthenticated} />
+    <BrowserRouter key={isAuthenticated ? "auth" : "guest"}>
+      {isAuthenticated ? <AuthenticatedAppContent /> : <UnauthenticatedAppContent />}
     </BrowserRouter>
   );
 }

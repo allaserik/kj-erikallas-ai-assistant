@@ -3,6 +3,18 @@
 import { API_BASE_URL } from "../config";
 import type { ApiErrorBody } from "./errorTypes";
 
+const PUBLIC_API_PREFIXES = [
+    "/api/auth/login",
+    "/api/auth/register",
+    "/api/auth/refresh",
+    "/api/email-verification/",
+    "/api/password-reset/",
+    "/api/ping",
+];
+
+function isPublicApiPath(path: string): boolean {
+    return PUBLIC_API_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
 
 // Custom error class for API errors
 export class ApiError extends Error {
@@ -32,6 +44,14 @@ export async function apiFetch<T>(
     path: string,
     options: RequestInit & { token?: string | null } = {}
 ): Promise<T> {
+    if (!options.token && !isPublicApiPath(path)) {
+        console.warn("[apiFetch] Blocked protected request without token", {
+            path,
+            method: options.method ?? "GET",
+        });
+        throw new ApiError(401, "Not authenticated");
+    }
+
     const url = `${API_BASE_URL}${path}`;
 
     const headers = new Headers(options.headers);

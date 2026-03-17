@@ -4,6 +4,7 @@ const tabs = [
     { to: "/planner/today", label: "Today" },
     { to: "/planner/goals", label: "Goals" },
     { to: "/planner/nutrition", label: "Nutrition" },
+    { to: "/planner/recipes", label: "Recipes" },
 ];
 
 export default function PlannerPage() {

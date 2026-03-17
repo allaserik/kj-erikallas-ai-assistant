@@ -159,6 +159,8 @@ DEMO_MODE=true VITE_DEMO_MODE=true APP_EMAIL_ENABLED=true docker compose up -d -
 
 ## Demo Troubleshooting
 
+Backend starts slower than frontend. Sometimes have to wait a few seconds. If frontend loads before backend, you may see errors or missing data until backend is ready.
+
 Demo tab not visible:
 - Ensure `VITE_DEMO_MODE=true`
 - Rebuild frontend: `docker compose up -d --build`

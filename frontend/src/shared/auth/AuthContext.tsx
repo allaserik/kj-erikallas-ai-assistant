@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useLocalAuth } from './useLocalAuth';
 import { AUTH0_AUDIENCE } from '../config';
@@ -20,17 +20,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated: auth0Authenticated, isLoading: auth0Loading, getAccessTokenSilently } = useAuth0();
   const { isAuthenticated: localAuthenticated, getAccessToken: getLocalAccessToken } = useLocalAuth();
-  const [isAuthenticated, setIsAuthenticated] = useState(auth0Authenticated || localAuthenticated);
-  const [authMethod, setAuthMethod] = useState<'oauth' | 'local' | null>(null);
-
-  // Determine which auth method is active and update state
-  useEffect(() => {
-    const newIsAuthenticated = auth0Authenticated || localAuthenticated;
-    const newAuthMethod: 'oauth' | 'local' | null = auth0Authenticated ? 'oauth' : localAuthenticated ? 'local' : null;
-    
-    setIsAuthenticated(newIsAuthenticated);
-    setAuthMethod(newAuthMethod);
-  }, [auth0Authenticated, localAuthenticated]);
+  const isAuthenticated = auth0Authenticated || localAuthenticated;
+  const authMethod: 'oauth' | 'local' | null = auth0Authenticated ? 'oauth' : localAuthenticated ? 'local' : null;
 
   // Listen for local auth changes
   useEffect(() => {

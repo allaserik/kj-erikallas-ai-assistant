@@ -8,3 +8,8 @@ spring:
 # Demo mode configuration
 demo:
   mode: ${DEMO_MODE:false}
+
+nutrition:
+  raw-import:
+    enabled: ${NUTRITION_RAW_IMPORT_ENABLED:false}
+    limit: ${NUTRITION_RAW_IMPORT_LIMIT:500}
