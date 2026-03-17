@@ -128,7 +128,7 @@ public class NutritionDashboardService {
                     new NutritionSummaryModels.NutrientProgress("Carbs", actual.carbsG(), zero, "g", 0, zero,
                             "neutral"),
                     new NutritionSummaryModels.NutrientProgress("Fats", actual.fatsG(), zero, "g", 0, zero, "neutral"),
-                    "Please set your nutrition targets in preferences to track progress");
+                    "Please set your nutrition targets in preferences to track progress", "generated");
         }
 
         // Calculate each macro's progress
@@ -145,7 +145,7 @@ public class NutritionDashboardService {
         String summary = generateSimpleSummary(caloriesProgress, proteinProgress, carbsProgress, fatsProgress);
 
         return new NutritionSummaryModels.DailySummary(date, actual.mealCount(), caloriesProgress, proteinProgress,
-                carbsProgress, fatsProgress, summary);
+                carbsProgress, fatsProgress, summary, "generated");
     }
 
     /**
@@ -216,7 +216,7 @@ public class NutritionDashboardService {
                 new NutritionSummaryModels.NutrientProgress("Protein", zero, zero, "g", 0, zero, "neutral"),
                 new NutritionSummaryModels.NutrientProgress("Carbs", zero, zero, "g", 0, zero, "neutral"),
                 new NutritionSummaryModels.NutrientProgress("Fats", zero, zero, "g", 0, zero, "neutral"),
-                "No meal plan for today yet");
+                "No meal plan for today yet", "generated");
     }
 
     /**

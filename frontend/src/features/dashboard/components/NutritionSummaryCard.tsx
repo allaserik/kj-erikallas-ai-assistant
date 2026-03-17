@@ -45,9 +45,14 @@ export function NutritionSummaryCard({ summary }: { summary: DailySummary }) {
     return (
         <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
             {/* Header */}
-            <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">Daily Nutrition</h2>
-                <p className="text-sm text-gray-600 mt-1">{summary.totalMeals} meals logged</p>
+            <div className="mb-6 flex items-center justify-between">
+                <div>
+                    <h2 className="text-xl font-semibold text-gray-900">Daily Nutrition</h2>
+                    <p className="text-sm text-gray-600 mt-1">{summary.totalMeals} meals logged</p>
+                </div>
+                <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                    {summary.source === "ai" ? "AI Generated" : "Rule-Based"}
+                </span>
             </div>
 
             {/* Summary Text */}

@@ -151,4 +151,5 @@ export type DailySummary = {
     carbs: NutrientProgress;
     fats: NutrientProgress;
     summary: string;
+    source: "generated" | "ai"; // "generated" = rule-based, "ai" = AI-generated (future)
 };
