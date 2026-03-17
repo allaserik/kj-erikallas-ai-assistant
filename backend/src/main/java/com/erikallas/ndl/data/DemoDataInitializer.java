@@ -19,6 +19,7 @@ import com.erikallas.ndl.nutrition.mealplan.MealPlanEntity;
 import com.erikallas.ndl.nutrition.mealplan.MealPlanMealEntity;
 import com.erikallas.ndl.nutrition.mealplan.MealPlanMealRepository;
 import com.erikallas.ndl.nutrition.mealplan.MealPlanRepository;
+import com.erikallas.ndl.nutrition.meallog.MealIntakeLogService;
 import com.erikallas.ndl.nutrition.recipe.RecipeCatalogQueryRepository;
 import com.erikallas.ndl.nutrition.recipe.RecipeCatalogModels;
 import jakarta.transaction.Transactional;
@@ -59,13 +60,15 @@ public class DemoDataInitializer {
     private final MealPlanRepository mealPlanRepo;
     private final MealPlanMealRepository mealPlanMealRepo;
     private final RecipeCatalogQueryRepository recipeQueryRepo;
+    private final MealIntakeLogService mealIntakeLogService;
     private final PasswordEncoder passwordEncoder;
 
     public DemoDataInitializer(UserRepository userRepo, HealthProfileRepository profileRepo, GoalRepository goalRepo,
             GoalProgressRepository goalProgressRepo, WeightEntryRepository weightRepo,
             ActivityCheckinRepository activityRepo, NutritionPreferencesRepository nutritionPreferencesRepo,
             MealPlanRepository mealPlanRepo, MealPlanMealRepository mealPlanMealRepo,
-            RecipeCatalogQueryRepository recipeQueryRepo, PasswordEncoder passwordEncoder) {
+            RecipeCatalogQueryRepository recipeQueryRepo, MealIntakeLogService mealIntakeLogService,
+            PasswordEncoder passwordEncoder) {
         this.userRepo = userRepo;
         this.profileRepo = profileRepo;
         this.goalRepo = goalRepo;
@@ -76,6 +79,7 @@ public class DemoDataInitializer {
         this.mealPlanRepo = mealPlanRepo;
         this.mealPlanMealRepo = mealPlanMealRepo;
         this.recipeQueryRepo = recipeQueryRepo;
+        this.mealIntakeLogService = mealIntakeLogService;
         this.passwordEncoder = passwordEncoder;
         initializeDemo();
     }
@@ -156,7 +160,11 @@ public class DemoDataInitializer {
             createMealPlans(DEMO_USER_ID, now);
             log.info("Created meal plans with recipes");
 
-            // 9. Set BMI and wellness score snapshot for faster first-load demo UX
+            // 9. Create meal intake logs (simulate eating meals for today and yesterday)
+            createMealLogs(DEMO_USER_ID, now);
+            log.info("Created meal intake logs");
+
+            // 10. Set BMI and wellness score snapshot for faster first-load demo UX
             var latestWeight = weightRepo.findTop30ByUserIdOrderByMeasuredAtDesc(DEMO_USER_ID).stream().findFirst();
             latestWeight.ifPresent(w -> profile.calculateBMI(w.getWeightKg()));
             profile.setWellnessScore(74);
@@ -321,5 +329,49 @@ public class DemoDataInitializer {
                 mealPlanMealRepo.save(meal);
             }
         }
+    }
+
+    private void createMealLogs(UUID userId, OffsetDateTime now) {
+        // Get available recipes from catalog for variation
+        List<RecipeCatalogModels.RecipeListItem> recipes = recipeQueryRepo
+                .search(new RecipeCatalogModels.RecipeSearchFilters(null, null, null, null, null, null, 50));
+
+        if (recipes.isEmpty()) {
+            log.warn("No recipes available, skipping meal logs");
+            return;
+        }
+
+        // Log meals for last 3 days (today, yesterday, 2 days ago) to show consumption
+        // history
+        LocalDate today = LocalDate.now();
+        LocalTime[] mealTimes = { LocalTime.of(8, 15), LocalTime.of(12, 30), LocalTime.of(19, 0) };
+        String[] mealTypes = { "BREAKFAST", "LUNCH", "DINNER" };
+        BigDecimal[] servingsVariations = { BigDecimal.ONE, new BigDecimal("1.2"), new BigDecimal("0.9") };
+
+        for (int daysAgo = 2; daysAgo >= 0; daysAgo--) {
+            LocalDate mealDate = today.minusDays(daysAgo);
+
+            // Log 3 meals for this day with varied recipes and servings
+            for (int mealIdx = 0; mealIdx < mealTypes.length; mealIdx++) {
+                // Pick varied recipes and servings
+                RecipeCatalogModels.RecipeListItem recipe = recipes.get((daysAgo * 3 + mealIdx) % recipes.size());
+                BigDecimal servings = servingsVariations[(daysAgo + mealIdx) % servingsVariations.length];
+
+                // Create OffsetDateTime for the meal
+                OffsetDateTime mealDateTime = OffsetDateTime.of(mealDate.atTime(mealTimes[mealIdx]),
+                        ZoneOffset.of("+02:00"));
+
+                try {
+                    mealIntakeLogService.logMealFromRecipe(userId, recipe.id(), servings, mealTypes[mealIdx],
+                            mealTimes[mealIdx], mealDateTime);
+                    log.debug("Logged {} for date {} with {x servings", mealTypes[mealIdx], mealDate, servings);
+                } catch (Exception e) {
+                    log.warn("Failed to log meal for date {} meal type {}: {}", mealDate, mealTypes[mealIdx],
+                            e.getMessage());
+                }
+            }
+        }
+
+        log.debug("Meal intake logs created for last 3 days");
     }
 }
