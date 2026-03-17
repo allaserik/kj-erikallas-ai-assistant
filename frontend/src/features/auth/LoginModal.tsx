@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { EmailPasswordForm } from "./EmailPasswordForm";
 import { DEMO_MODE } from "../../shared/config";
-import { loginUser } from "../../api/auth";
 
 // LoginModal: Full-screen calming overlay for unauthenticated users
 // Supports both Auth0 OAuth and email/password authentication
@@ -10,32 +9,8 @@ export function LoginModal() {
     const { loginWithRedirect, isLoading } = useAuth0();
     const [authMode, setAuthMode] = useState<'demo' | 'oauth' | 'email'>(DEMO_MODE ? 'demo' : 'oauth');
     const [emailMode, setEmailMode] = useState<'login' | 'register'>('login');
-    const [isDemoLoading, setIsDemoLoading] = useState(false);
-
-    // Debug logging
-    console.log('🎬 LoginModal mounted - DEMO_MODE=', DEMO_MODE);
 
     if (isLoading) return null;
-
-    // Demo login handler - uses email/password auth instead of OAuth
-    const handleDemoLogin = async () => {
-        setIsDemoLoading(true);
-        try {
-            const response = await loginUser("demo@example.com", "demo@example.com");
-
-            // Store token in localStorage
-            localStorage.setItem("accessToken", response.accessToken);
-            localStorage.setItem("refreshToken", response.refreshToken);
-            // Dispatch auth changed event for AuthContext to pick up
-            window.dispatchEvent(new Event("localAuthChanged"));
-            // Modal will disappear when auth state updates
-        } catch (error) {
-            console.error("Demo login failed:", error);
-            alert("Demo login failed. Please try again.");
-        } finally {
-            setIsDemoLoading(false);
-        }
-    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-100/80 backdrop-blur-sm">
@@ -97,11 +72,12 @@ export function LoginModal() {
                             </div>
                         </div>
                         <button
-                            className="w-full px-6 py-3 rounded-lg bg-purple-600 text-white font-semibold shadow hover:bg-purple-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
-                            onClick={handleDemoLogin}
-                            disabled={isDemoLoading}
+                            className="w-full px-6 py-3 rounded-lg bg-purple-600 text-white font-semibold shadow hover:bg-purple-700 transition flex items-center justify-center gap-2"
+                            onClick={() => loginWithRedirect({
+                                authorizationParams: { login_hint: "demo@example.com" },
+                            })}
                         >
-                            {isDemoLoading ? "Loading..." : "🎬 Enter Demo"}
+                            🎬 Enter Demo
                         </button>
                         <p className="text-gray-500 text-xs text-center">
                             This account has pre-populated sample data for demonstration purposes

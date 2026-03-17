@@ -18,15 +18,12 @@ public class MealPlanService {
     private final MealPlanRepository mealPlanRepository;
     private final MealPlanMealRepository mealPlanMealRepository;
     private final NutritionPreferencesService nutritionPreferencesService;
-    private final MealSelectionStrategy mealSelectionStrategy;
+    private final MealSelectionStrategyComposite mealSelectionStrategy;
     private final MealPlanQueryService mealPlanQueryService;
 
-    public MealPlanService(
-            MealPlanRepository mealPlanRepository,
-            MealPlanMealRepository mealPlanMealRepository,
+    public MealPlanService(MealPlanRepository mealPlanRepository, MealPlanMealRepository mealPlanMealRepository,
             NutritionPreferencesService nutritionPreferencesService,
-            MealSelectionStrategy mealSelectionStrategy,
-            MealPlanQueryService mealPlanQueryService) {
+            MealSelectionStrategyComposite mealSelectionStrategy, MealPlanQueryService mealPlanQueryService) {
         this.mealPlanRepository = mealPlanRepository;
         this.mealPlanMealRepository = mealPlanMealRepository;
         this.nutritionPreferencesService = nutritionPreferencesService;
@@ -44,47 +41,29 @@ public class MealPlanService {
         List<String> slotTypes = buildMealSlots(prefs.mealsPerDay(), prefs.snacksPerDay());
 
         OffsetDateTime now = OffsetDateTime.now();
-        MealPlanEntity plan = new MealPlanEntity(
-                UUID.randomUUID(),
-                userId,
-                period,
-                startDate,
-                endDate,
-                "generated",
-                "rule_based",
-                now,
-                now);
+        MealPlanEntity plan = new MealPlanEntity(UUID.randomUUID(), userId, period, startDate, endDate, "generated",
+                "rule_based", now, now);
         mealPlanRepository.save(plan);
 
         List<MealPlanMealEntity> mealRows = new ArrayList<>();
 
         for (LocalDate day = startDate; !day.isAfter(endDate); day = day.plusDays(1)) {
-            // Avoid duplicates within a single day, but allow repeats across different days.
+            // Avoid duplicates within a single day, but allow repeats across different
+            // days.
             Set<UUID> usedRecipeIdsForDay = new HashSet<>();
             for (int i = 0; i < slotTypes.size(); i++) {
                 String slot = slotTypes.get(i);
-                var candidate = mealSelectionStrategy.chooseRecipe(
-                        slot,
-                        prefs.cuisinePreferences(),
-                        prefs.dietaryPreferenceCodes(),
-                        prefs.allergyCodes(),
-                        prefs.dislikedIngredients(),
-                        usedRecipeIdsForDay);
+                var candidate = mealSelectionStrategy.chooseRecipe(slot, prefs.cuisinePreferences(),
+                        prefs.dietaryPreferenceCodes(), prefs.allergyCodes(), prefs.dislikedIngredients(),
+                        usedRecipeIdsForDay, prefs);
 
                 if (candidate == null) {
                     continue;
                 }
 
                 usedRecipeIdsForDay.add(candidate.id());
-                MealPlanMealEntity row = new MealPlanMealEntity(
-                        UUID.randomUUID(),
-                        plan.getId(),
-                        day,
-                        slot,
-                        candidate.id(),
-                        i,
-                        now,
-                        now);
+                MealPlanMealEntity row = new MealPlanMealEntity(UUID.randomUUID(), plan.getId(), day, slot,
+                        candidate.id(), i, now, now);
                 mealRows.add(row);
 
             }

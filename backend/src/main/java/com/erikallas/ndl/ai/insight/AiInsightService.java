@@ -18,6 +18,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.beans.factory.annotation.Value;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,9 @@ public class AiInsightService {
     private static final Pattern UNSAFE_PATTERN = Pattern.compile(
             "\\b(diagnose|diagnosis|medication|dose|dosage|prescribe|cure|starve|starvation|purge|laxative|self-harm|suicide)\\b",
             Pattern.CASE_INSENSITIVE);
+
+    @Value("${ai.insight-generation.enabled:true}")
+    private boolean aiInsightGenerationEnabled;
 
     private final AiInsightRepository repo;
     private final OpenAiClient openAi;
@@ -74,6 +78,12 @@ public class AiInsightService {
                     cached.getCreatedAt());
         }
 
+        // Check if AI insight generation is enabled
+        if (!aiInsightGenerationEnabled) {
+            log.info("AI insight generation is disabled, falling back to last insight. userId={}", userId);
+            return fallbackToLast(userId);
+        }
+
         Set<String> recentRecommendations = getRecentRecommendations(userId, 5);
         String userPrompt = buildUserPromptWithGuards(context, recentRecommendations);
 
@@ -92,8 +102,8 @@ public class AiInsightService {
         try {
             AiPayload payload = generateAndValidate(systemPrompt, userPrompt, context, recentRecommendations);
 
-            AiInsightEntity stored = new AiInsightEntity(UUID.randomUUID(), userId, goalId, inputHash,
-                    openAi.model(), om.valueToTree(payload), OffsetDateTime.now());
+            AiInsightEntity stored = new AiInsightEntity(UUID.randomUUID(), userId, goalId, inputHash, openAi.model(),
+                    om.valueToTree(payload), OffsetDateTime.now());
             repo.save(stored);
 
             return new AiInsightResult(payload, "openai", stored.getCreatedAt());
@@ -109,8 +119,9 @@ public class AiInsightService {
 
         for (int attempt = 1; attempt <= GENERATION_ATTEMPTS; attempt++) {
             try {
-                String prompt = attempt == 1 ? userPrompt : userPrompt
-                        + "\n\nCORRECTION: Previous output failed validation. Ensure recommendations explicitly reference active goals and concrete goal metrics from context.";
+                String prompt = attempt == 1 ? userPrompt
+                        : userPrompt
+                                + "\n\nCORRECTION: Previous output failed validation. Ensure recommendations explicitly reference active goals and concrete goal metrics from context.";
                 String json = openAi.generateInsightJson(systemPrompt, prompt);
                 return parseAndValidateGenerated(json, context, recentRecommendations);
             } catch (Exception e) {
@@ -124,7 +135,8 @@ public class AiInsightService {
 
     private UUID extractGoalIdFromContext(Map<String, Object> context) {
         Object activeGoalsObj = context.get("active_goals");
-        if (activeGoalsObj instanceof List<?> goals && !goals.isEmpty() && goals.get(0) instanceof Map<?, ?> firstGoal) {
+        if (activeGoalsObj instanceof List<?> goals && !goals.isEmpty()
+                && goals.get(0) instanceof Map<?, ?> firstGoal) {
             Object firstGoalIdObj = firstGoal.get("goal_id");
             if (firstGoalIdObj instanceof String firstGoalIdStr) {
                 try {
@@ -179,7 +191,8 @@ public class AiInsightService {
         return parseAndValidate(json, null, null, false);
     }
 
-    private AiPayload parseAndValidateGenerated(String json, Map<String, Object> context, Set<String> recentNormalized) {
+    private AiPayload parseAndValidateGenerated(String json, Map<String, Object> context,
+            Set<String> recentNormalized) {
         return parseAndValidate(json, context, recentNormalized, true);
     }
 
@@ -208,8 +221,8 @@ public class AiInsightService {
             }
 
             AiPayload payload = new AiPayload(
-                    java.util.List.of(recs.get(0).asText(), recs.get(1).asText(), recs.get(2).asText()),
-                    rq.asText(), sum.asText());
+                    java.util.List.of(recs.get(0).asText(), recs.get(1).asText(), recs.get(2).asText()), rq.asText(),
+                    sum.asText());
 
             if (strictGuards) {
                 validateGrounding(payload, context);
@@ -561,7 +574,8 @@ public class AiInsightService {
         StringBuilder sb = new StringBuilder(contextBuilder.buildUserPrompt(context));
         sb.append("\n\n=== STRICT OUTPUT RULES ===\n");
         sb.append("- Mention at least one concrete metric from the provided context in recommendations or summary.\n");
-        sb.append("- Explicitly reference at least one active goal (goal type or target metric) in recommendations or summary.\n");
+        sb.append(
+                "- Explicitly reference at least one active goal (goal type or target metric) in recommendations or summary.\n");
         sb.append("- If you mention any percentage, it must exactly match a provided percentage from context.\n");
         sb.append("- Avoid diagnosis, prescriptions, dosages, and extreme advice.\n");
         sb.append("- Respect dietary restrictions and do not suggest restricted foods.\n");
@@ -572,9 +586,6 @@ public class AiInsightService {
     }
 
     private String normalizeText(String s) {
-        return s.toLowerCase()
-                .replaceAll("[^a-z0-9\\s]", " ")
-                .replaceAll("\\s+", " ")
-                .trim();
+        return s.toLowerCase().replaceAll("[^a-z0-9\\s]", " ").replaceAll("\\s+", " ").trim();
     }
 }
