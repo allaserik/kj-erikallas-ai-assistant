@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useAuthToken } from "../../../shared/auth/useAuthToken";
 import { getMealPlanById, type GeneratedMealPlan, type MealPlanMealItem } from "../../../shared/api/mealPlans";
 import { MealManagementUI } from "./MealManagementUI";
+import { ShoppingList } from "../components/ShoppingList";
 
 /**
  * MealPlanDetailPage: Shows a complete generated meal plan
@@ -21,6 +22,7 @@ export default function MealPlanDetailPage() {
     const [selectedDay, setSelectedDay] = useState(0);
     const [selectedMeal, setSelectedMeal] = useState<MealPlanMealItem | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
+    const [showShoppingList, setShowShoppingList] = useState(false);
 
     const isNewlyGenerated = (location.state as any)?.newlyGenerated ?? false;
 
@@ -136,6 +138,19 @@ export default function MealPlanDetailPage() {
                     <p className="text-sm text-slate-600 mb-1">Meals</p>
                     <p className="text-2xl font-bold text-slate-900">{currentDay.meals.length}</p>
                 </div>
+            </div>
+
+            {/* Shopping List Button */}
+            <div className="mb-8">
+                <button
+                    onClick={() => setShowShoppingList(true)}
+                    className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-3 px-6 rounded-lg transition shadow-md flex items-center justify-center gap-2"
+                >
+                    🛒 Generate Shopping List for This Plan
+                </button>
+                <p className="text-xs text-slate-600 mt-2">
+                    Generate a categorized shopping list for all meals in this plan with editable quantities
+                </p>
             </div>
 
             {/* Manage Meals */}
@@ -318,6 +333,36 @@ export default function MealPlanDetailPage() {
                                     Swap Recipe (Coming Soon)
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Shopping List Modal */}
+            {showShoppingList && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-40 overflow-y-auto">
+                    <div className="bg-white rounded-lg max-w-4xl w-full my-8">
+                        {/* Header */}
+                        <div className="sticky top-0 bg-white border-b p-6 flex justify-between items-center">
+                            <div>
+                                <h2 className="text-2xl font-bold text-slate-900">Shopping List</h2>
+                                <p className="text-slate-600 mt-1">
+                                    {mealPlan?.days.length} days • {mealPlan?.totalMeals} meals
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowShoppingList(false)}
+                                className="text-slate-400 hover:text-slate-600 text-2xl font-light"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="max-h-[70vh] overflow-y-auto p-6">
+                            <ShoppingList
+                                mealIds={mealPlan ? mealPlan.days.flatMap((day) => day.meals.map((meal) => meal.id)) : []}
+                            />
                         </div>
                     </div>
                 </div>

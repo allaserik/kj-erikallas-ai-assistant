@@ -3,6 +3,7 @@ package com.erikallas.ndl.nutrition.shoppinglist;
 import com.erikallas.ndl.auth.user.UserService;
 import com.erikallas.ndl.common.api.dto.ApiSuccess;
 import com.erikallas.ndl.nutrition.mealplan.MealPlanMealRepository;
+import com.erikallas.ndl.nutrition.mealplan.MealPlanQueryService;
 import com.erikallas.ndl.nutrition.recipe.RecipeCatalogQueryRepository;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.math.BigDecimal;
@@ -28,13 +29,16 @@ public class ShoppingListController {
 
     private final UserService userService;
     private final MealPlanMealRepository mealPlanMealRepository;
+    private final MealPlanQueryService mealPlanQueryService;
     private final RecipeCatalogQueryRepository recipeRepository;
     private final ShoppingListService shoppingListService;
 
     public ShoppingListController(UserService userService, MealPlanMealRepository mealPlanMealRepository,
-            RecipeCatalogQueryRepository recipeRepository, ShoppingListService shoppingListService) {
+            MealPlanQueryService mealPlanQueryService, RecipeCatalogQueryRepository recipeRepository,
+            ShoppingListService shoppingListService) {
         this.userService = userService;
         this.mealPlanMealRepository = mealPlanMealRepository;
+        this.mealPlanQueryService = mealPlanQueryService;
         this.recipeRepository = recipeRepository;
         this.shoppingListService = shoppingListService;
     }
@@ -57,10 +61,15 @@ public class ShoppingListController {
 
             // Fetch recipe and extract ingredients
             var recipe = recipeRepository.getById(meal.getRecipeId());
-            if (recipe != null) {
-                // TODO: Extract ingredients from recipe detail
-                // For now, assuming recipe has ingredients accessible via builder pattern
-                // This depends on your recipe structure
+            if (recipe != null && recipe.ingredients() != null) {
+                for (var ingredient : recipe.ingredients()) {
+                    allIngredients.add(new ShoppingListService.RecipeIngredientInfo(
+                            ingredient.label(),
+                            ingredient.unit(),
+                            ingredient.quantity()
+                    ));
+                }
+                logger.debug("Added {} ingredients from recipe: {}", recipe.ingredients().size(), recipe.title());
             }
         }
 
@@ -91,9 +100,55 @@ public class ShoppingListController {
             JwtAuthenticationToken auth) {
         var user = userService.ensureUserFromJwt(auth);
 
-        // TODO: Fetch all meals in date range and generate shopping list
-        // For now, returning empty list
-        return ApiSuccess.of(new ShoppingListResponse(0, new ArrayList<>(), new LinkedHashMap<>()));
+        // Get the latest meal plan for this user
+        var latestPlan = mealPlanQueryService.getLatest(user.getId());
+        if (latestPlan == null) {
+            logger.warn("No meal plan found for user {}", user.getId());
+            return ApiSuccess.of(new ShoppingListResponse(0, new ArrayList<>(), new LinkedHashMap<>()));
+        }
+
+        List<ShoppingListService.RecipeIngredientInfo> allIngredients = new ArrayList<>();
+        
+        // Find all meals in the date range
+        for (var day : latestPlan.days()) {
+            LocalDate dayDate = day.date();
+            
+            // Check if this day is within the requested range
+            if (!dayDate.isBefore(request.startDate()) && !dayDate.isAfter(request.endDate())) {
+                for (var meal : day.meals()) {
+                    // Extract ingredients from each recipe
+                    var recipe = recipeRepository.getById(meal.recipeId());
+                    if (recipe != null && recipe.ingredients() != null) {
+                        for (var ingredient : recipe.ingredients()) {
+                            allIngredients.add(new ShoppingListService.RecipeIngredientInfo(
+                                    ingredient.label(),
+                                    ingredient.unit(),
+                                    ingredient.quantity()
+                            ));
+                        }
+                        logger.debug("Added {} ingredients from recipe: {} for date: {}", 
+                            recipe.ingredients().size(), recipe.title(), dayDate);
+                    }
+                }
+            }
+        }
+
+        var list = shoppingListService.generateFromRecipes(allIngredients);
+        logger.info("Generated shopping list for date range {} to {} with {} meals", 
+            request.startDate(), request.endDate(), allIngredients.size());
+
+        return ApiSuccess.of(new ShoppingListResponse(list.getItemCount(), list.getActiveItems().stream()
+                .map(item -> new ShoppingListItemResponse(item.id(), item.label(), item.unit(),
+                        item.quantity().doubleValue(), item.category().getDisplayName(), item.excluded(), item.notes()))
+                .toList(),
+                list.byCategory().entrySet().stream().filter(e -> !e.getValue().isEmpty())
+                        .collect(java.util.LinkedHashMap::new, (m, e) -> m.put(e.getKey().getDisplayName(),
+                                e.getValue().stream().filter(item -> !item.excluded())
+                                        .map(item -> new ShoppingListItemResponse(item.id(), item.label(), item.unit(),
+                                                item.quantity().doubleValue(), item.category().getDisplayName(),
+                                                item.excluded(), item.notes()))
+                                        .toList()),
+                                java.util.LinkedHashMap::putAll)));
     }
 
     /**
