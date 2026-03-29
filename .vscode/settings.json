@@ -6,6 +6,7 @@
         "npm run build": true,
         "./mvnw": true,
         "mvn compile": true,
-        "npm install": true
+        "npm install": true,
+        "mvn clean": true
     }
 }

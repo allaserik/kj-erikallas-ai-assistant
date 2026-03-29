@@ -24,7 +24,7 @@ export default function Sidebar() {
                     <HomeIcon className="h-5 w-5" /> Dashboard
                 </NavLink>
                 <NavLink
-                    to="/planner/today"
+                    to="/planner"
                     className={({ isActive }) =>
                         `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? "bg-green-50 text-green-700" : "text-slate-600 hover:bg-slate-50"}`
                     }

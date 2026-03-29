@@ -14,7 +14,6 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
-
       - name: Detect backend
       - id: detect_backend
         run: |

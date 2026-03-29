@@ -10,7 +10,6 @@ import {
     Tooltip,
     Legend,
     ResponsiveContainer,
-    Cell,
 } from "recharts";
 import { useAuthToken } from "../../shared/auth/useAuthToken";
 import { getDailyTrends, getWeeklyTrends, getMonthlySummaries } from "../../shared/api/nutrition";

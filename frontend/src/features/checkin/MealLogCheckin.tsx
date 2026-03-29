@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuthToken } from "../../shared/auth/useAuthToken";
 import { useAuthedQuery } from "../../shared/auth/useAuthedQuery";
-import { getMealsForDate, logMeal, logCustomMeal, deleteMealLog, type MealIntakeLog } from "../../shared/api/nutrition";
-import { getRecipes } from "../../shared/api/recipes";
+import { getMealsForDate, logMeal, logCustomMeal, deleteMealLog } from "../../shared/api/nutrition";
+import { searchRecipes } from "../../shared/api/recipes";
 import { Button } from "../../shared/ui/Button";
 import { Card, CardBody, CardTitle, CardSubtitle } from "../../shared/ui/Card";
 import { TextField } from "../../shared/ui/TextField";
@@ -83,8 +83,8 @@ export function MealLogCheckin({ reloadKey, onReload }: MealLogCheckinProps) {
     const recipesQ = useAuthedQuery(
         `recipes-for-meal-log-${reloadKey}`,
         async (token: string) => {
-            const recipes = await getRecipes(
-                { page: 0, size: 50, sort: "title,asc" },
+            const recipes = await searchRecipes(
+                { limit: 50 },
                 token
             );
             return recipes || [];
@@ -257,7 +257,7 @@ export function MealLogCheckin({ reloadKey, onReload }: MealLogCheckinProps) {
                         <>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                                    Recipe {recipesQ.isLoading && <Spinner className="inline ml-2" />}
+                                    Recipe {recipesQ.loading && <Spinner />}
                                 </label>
                                 {recipesQ.error && (
                                     <p className="text-sm text-red-600">Failed to load recipes</p>
@@ -268,11 +268,11 @@ export function MealLogCheckin({ reloadKey, onReload }: MealLogCheckinProps) {
                                         setRecipeId(e.target.value);
                                         if (mealValidationErrors.recipeId) setMealValidationErrors({});
                                     }}
-                                    disabled={isMealSubmitting || recipesQ.isLoading}
+                                    disabled={isMealSubmitting || recipesQ.loading}
                                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-green-200 transition"
                                 >
                                     <option value="">Select a recipe...</option>
-                                    {recipesQ.data?.map((recipe) => (
+                                    {recipesQ.data?.map((recipe: any) => (
                                         <option key={recipe.id} value={recipe.id}>
                                             {recipe.title}
                                         </option>

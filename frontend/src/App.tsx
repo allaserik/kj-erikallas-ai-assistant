@@ -13,7 +13,11 @@ import RecipeExplorerPage from './features/nutrition/RecipeExplorerPage';
 import ShoppingListPage from './features/nutrition/ShoppingListPage';
 import PlannerPage from './features/planner/PlannerPage';
 import MealPlanPage from './features/planner/MealPlanPage';
+import AIGeneratedMealPlansPage from './features/planner/AIGeneratedMealPlansPage';
 import { MealManagementPage } from './features/planner/MealManagementPage';
+import MealPlansHubPage from './features/planner/MealPlansHubPage';
+import SimpleMealGeneratorPage from './features/planner/SimpleMealGeneratorPage';
+import MealPlanDetailPage from './features/planner/MealPlanDetailPage';
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage';
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
@@ -55,14 +59,17 @@ function LoggedInContent() {
       <Route path="/" element={<AppShell />}>
         <Route index element={<DashboardPage />} />
         <Route path="planner" element={<PlannerPage />}>
-          <Route index element={<Navigate to="/planner/today" replace />} />
+          <Route index element={<MealPlansHubPage />} />
           <Route path="today" element={<CheckInPage />} />
           <Route path="meals" element={<MealPlanPage />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="nutrition" element={<NutritionPreferencesPage />} />
           <Route path="recipes" element={<RecipeExplorerPage />} />
+          <Route path="ai-generate" element={<AIGeneratedMealPlansPage />} />
           <Route path="shopping-list" element={<ShoppingListPage />} />
           <Route path="manage-meals" element={<MealManagementPage />} />
+          <Route path="generate-meal-plan" element={<SimpleMealGeneratorPage />} />
+          <Route path="meal-plan/:mealPlanId" element={<MealPlanDetailPage />} />
         </Route>
         <Route path="trends" element={<TrendsPage />} />
         <Route path="goals" element={<Navigate to="/planner/goals" replace />} />

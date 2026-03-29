@@ -110,7 +110,7 @@ export function getMealsForDateRange(
  * Delete a meal log entry.
  */
 export function deleteMealLog(mealLogId: string, token: string): Promise<void> {
-    return api.delete(`/api/nutrition/meals/${mealLogId}`, token);
+    return api.del(`/api/nutrition/meals/${mealLogId}`, token);
 }
 
 // ===== TREND TYPES & FUNCTIONS =====

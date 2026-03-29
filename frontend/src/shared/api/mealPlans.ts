@@ -34,6 +34,50 @@ export type GenerateMealPlanRequest = {
     start_date?: string;
 };
 
+// ===== PHASE 3-4: AI MEAL PLAN GENERATION =====
+
+export type AIGenerationRequest = {
+    query: string;
+    numberOfDays: number;
+    mealType?: string;
+    calorieTarget?: number;
+    proteinTargetG?: number;
+    dietaryPreferences?: string[];
+    cuisinePreferences?: string[];
+    allergies?: string[];
+};
+
+export type RecipeSearchResult = {
+    id: string;
+    title: string;
+    cuisine: string | null;
+    mealType: string;
+    caloriesKcal: number;
+    proteinG: number;
+    carbsG: number;
+    fatsG: number;
+    servings: number;
+};
+
+export function generateAIMealPlan(request: AIGenerationRequest, token: string): Promise<GeneratedMealPlan> {
+    return api
+        .post<GeneratedMealPlan | ApiResponse<GeneratedMealPlan>>(
+            "/api/meal-plans/ai/generate-and-save",
+            request,
+            token
+        )
+        .then((response) => unwrapApiData(response));
+}
+
+export function searchRecipesByQuery(query: string, limit: number, token: string): Promise<RecipeSearchResult[]> {
+    return api
+        .get<RecipeSearchResult[] | ApiResponse<RecipeSearchResult[]>>(
+            `/api/meal-plans/ai/search?query=${encodeURIComponent(query)}&limit=${limit}`,
+            token
+        )
+        .then((response) => unwrapApiData(response));
+}
+
 export function generateMealPlan(request: GenerateMealPlanRequest, token: string): Promise<GeneratedMealPlan> {
     return api
         .post<GeneratedMealPlan | ApiResponse<GeneratedMealPlan>>("/api/meal-plans/generate", request, token)
