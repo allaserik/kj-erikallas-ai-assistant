@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthToken } from "../../shared/auth/useAuthToken";
-import { api } from "../../shared/api/client";
-import type { ApiResponse } from "../../shared/types";
+import { useAuthToken } from "../../../shared/auth/useAuthToken";
+import { api } from "../../../shared/api/client";
+import type { ApiResponse } from "../../../shared/types";
 
 /**
  * SimpleMealGeneratorPage: Simple form to generate AI meal plans

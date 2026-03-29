@@ -10,7 +10,7 @@ import { QuickNav } from "./components/QuickNav";
 import { ActivityStreakCard } from "./components/ActivityStreakCard";
 import { ComparisonViewCard } from "./components/ComparisonViewCard";
 import { BMICardSkeleton, WellnessScoreCardSkeleton, GoalCardSkeleton, InsightCardSkeleton } from "./components/SkeletonCards";
-import { NutritionTrendChart } from "../nutrition/NutritionTrendChart";
+import { NutritionTrendChart } from "../nutrition/components/NutritionTrendChart";
 import type { DashboardState } from "./useDashboardData";
 import { Link } from "react-router-dom";
 

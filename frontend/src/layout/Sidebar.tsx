@@ -1,15 +1,18 @@
 import { NavLink } from "react-router-dom";
 import {
     HomeIcon,
-    CalendarDaysIcon,
+    FireIcon,
     ChartBarIcon,
     UserCircleIcon,
     Cog6ToothIcon,
+    SparklesIcon,
+    CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 import { AuthButton } from "../features/auth/AuthButton";
 
 // Sidebar: Neutral white background, slate grays, soft green accents.
 // Modern, professional navigation with clear active states.
+// Organized by domain: Nutrition, Training, Insights
 export default function Sidebar() {
     return (
         <aside className="hidden md:flex md:flex-col md:w-56 md:h-screen md:fixed md:left-0 md:top-0 bg-white border-r border-slate-200 z-20">
@@ -23,22 +26,80 @@ export default function Sidebar() {
                 >
                     <HomeIcon className="h-5 w-5" /> Dashboard
                 </NavLink>
+
+                {/* NUTRITION DOMAIN */}
+                <div className="mt-4 mb-2 px-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nutrition</p>
+                </div>
                 <NavLink
-                    to="/planner"
+                    to="/nutrition"
+                    end
                     className={({ isActive }) =>
                         `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? "bg-green-50 text-green-700" : "text-slate-600 hover:bg-slate-50"}`
                     }
                 >
-                    <CalendarDaysIcon className="h-5 w-5" /> Planner
+                    <SparklesIcon className="h-5 w-5" /> Meal Planning
                 </NavLink>
                 <NavLink
-                    to="/trends"
+                    to="/nutrition/recipes"
+                    className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 pl-8 rounded-lg text-sm font-medium transition-colors ${isActive ? "bg-green-50 text-green-700" : "text-slate-600 hover:bg-slate-50"}`
+                    }
+                >
+                    <span className="text-xs">Recipes</span>
+                </NavLink>
+                <NavLink
+                    to="/nutrition/shopping-list"
+                    className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 pl-8 rounded-lg text-sm font-medium transition-colors ${isActive ? "bg-green-50 text-green-700" : "text-slate-600 hover:bg-slate-50"}`
+                    }
+                >
+                    <span className="text-xs">Shopping List</span>
+                </NavLink>
+
+                {/* TRAINING DOMAIN */}
+                <div className="mt-4 mb-2 px-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Training</p>
+                </div>
+                <NavLink
+                    to="/training"
                     className={({ isActive }) =>
                         `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? "bg-green-50 text-green-700" : "text-slate-600 hover:bg-slate-50"}`
                     }
                 >
-                    <ChartBarIcon className="h-5 w-5" /> Trends
+                    <FireIcon className="h-5 w-5" /> Activity Log
                 </NavLink>
+
+                {/* INSIGHTS DOMAIN */}
+                <div className="mt-4 mb-2 px-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Insights</p>
+                </div>
+                <NavLink
+                    to="/insights"
+                    className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? "bg-green-50 text-green-700" : "text-slate-600 hover:bg-slate-50"}`
+                    }
+                >
+                    <ChartBarIcon className="h-5 w-5" /> Analytics
+                </NavLink>
+
+                {/* GOALS */}
+                <div className="mt-4 mb-2 px-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Goals</p>
+                </div>
+                <NavLink
+                    to="/goals"
+                    className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? "bg-green-50 text-green-700" : "text-slate-600 hover:bg-slate-50"}`
+                    }
+                >
+                    <CheckCircleIcon className="h-5 w-5" /> Goals
+                </NavLink>
+
+                {/* USER */}
+                <div className="mt-4 mb-2 px-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">User</p>
+                </div>
                 <NavLink
                     to="/profile"
                     className={({ isActive }) =>

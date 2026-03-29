@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
-import { Card } from "../../shared/ui/Card";
-import { Alert } from "../../shared/ui/Alert";
-import { Button } from "../../shared/ui/Button";
+import { Card } from "../../../shared/ui/Card";
+import { Alert } from "../../../shared/ui/Alert";
+import { Button } from "../../../shared/ui/Button";
 import {
     reorderMeals,
     swapMeals,
     replaceMeal,
     getLatestMealPlan,
     type MealPlanMealItem,
-} from "../../shared/api/mealPlans";
-import { searchRecipes, type RecipeListItem } from "../../shared/api/recipes";
+} from "../../../shared/api/mealPlans";
+import { searchRecipes, type RecipeListItem } from "../../../shared/api/recipes";
 
 export interface MealManagementUIProps {
     /**

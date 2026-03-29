@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAppAuth } from "../../shared/auth/AuthContext";
-import { useAuthToken } from "../../shared/auth/useAuthToken";
+import { useAppAuth } from "../../../shared/auth/AuthContext";
+import { useAuthToken } from "../../../shared/auth/useAuthToken";
 import {
     getNutritionOptions,
     getNutritionPreferences,
     upsertNutritionPreferences,
     type NutritionOptionsResponse,
-} from "../../shared/api/nutritionPreferences";
-import { Alert } from "../../shared/ui/Alert";
-import { Button } from "../../shared/ui/Button";
-import { Card, CardBody, CardTitle } from "../../shared/ui/Card";
-import { Spinner } from "../../shared/ui/Spinner";
-import { TextField } from "../../shared/ui/TextField";
+} from "../../../shared/api/nutritionPreferences";
+import { Alert } from "../../../shared/ui/Alert";
+import { Button } from "../../../shared/ui/Button";
+import { Card, CardBody, CardTitle } from "../../../shared/ui/Card";
+import { Spinner } from "../../../shared/ui/Spinner";
+import { TextField } from "../../../shared/ui/TextField";
 
 type FormState = {
     timezone: string;

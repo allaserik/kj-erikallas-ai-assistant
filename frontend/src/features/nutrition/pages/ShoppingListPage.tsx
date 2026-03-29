@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { ShoppingList } from "./ShoppingList";
-import { Card, CardBody, CardTitle, CardSubtitle } from "../../shared/ui/Card";
-import { TextField } from "../../shared/ui/TextField";
-import { Button } from "../../shared/ui/Button";
-import { Alert } from "../../shared/ui/Alert";
+import { ShoppingList } from "../components/ShoppingList";
+import { Card, CardBody, CardTitle, CardSubtitle } from "../../../shared/ui/Card";
+import { TextField } from "../../../shared/ui/TextField";
+import { Button } from "../../../shared/ui/Button";
+import { Alert } from "../../../shared/ui/Alert";
 
 export default function ShoppingListPage() {
     const [dateRange, setDateRange] = useState({

@@ -1,4 +1,4 @@
-import type { ChartDataPoint, MilestoneMarker } from "../useWeightChartData";
+import type { ChartDataPoint, MilestoneMarker } from "../hooks/useWeightChartData";
 import { Card, CardBody, CardTitle } from "../../../shared/ui/Card";
 
 interface WeightChartProps {

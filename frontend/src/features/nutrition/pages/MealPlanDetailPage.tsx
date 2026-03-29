@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { useAuthToken } from "../../shared/auth/useAuthToken";
-import { getMealPlanById, type GeneratedMealPlan, type MealPlanMealItem } from "../../shared/api/mealPlans";
+import { useAuthToken } from "../../../shared/auth/useAuthToken";
+import { getMealPlanById, type GeneratedMealPlan, type MealPlanMealItem } from "../../../shared/api/mealPlans";
 
 /**
  * MealPlanDetailPage: Shows a complete generated meal plan
@@ -306,7 +306,7 @@ export default function MealPlanDetailPage() {
                                 <div>
                                     <h3 className="font-semibold text-slate-900 mb-3">Ingredients</h3>
                                     <ul className="space-y-2">
-                                        {selectedMeal.ingredients.map((ing, idx) => (
+                                        {selectedMeal.ingredients.map((ing: any, idx: number) => (
                                             <li key={idx} className="flex justify-between text-slate-700">
                                                 <span>{ing.label}</span>
                                                 <span className="font-medium text-slate-600">
@@ -323,7 +323,7 @@ export default function MealPlanDetailPage() {
                                 <div>
                                     <h3 className="font-semibold text-slate-900 mb-3">Recipe Instructions</h3>
                                     <div className="space-y-3">
-                                        {selectedMeal.preparation.map((step, idx) => (
+                                        {selectedMeal.preparation.map((step: any, idx: number) => (
                                             <div key={idx} className="flex gap-3">
                                                 <div className="flex-shrink-0">
                                                     <div className="flex items-center justify-center h-8 w-8 rounded-full bg-green-100 text-green-700 font-semibold text-sm">

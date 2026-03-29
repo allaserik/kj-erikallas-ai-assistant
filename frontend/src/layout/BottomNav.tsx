@@ -1,14 +1,14 @@
 import { NavLink } from "react-router-dom";
 import {
     HomeIcon,
-    CalendarDaysIcon,
+    SparklesIcon,
+    FireIcon,
     ChartBarIcon,
     UserCircleIcon,
-    Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 
-// BottomNav: Mobile navigation with neutral palette. Soft green accents for active tabs.
-// Modern, minimal styling with good touch targets.
+// BottomNav: Mobile navigation with domain-based organization
+// Shows shortcuts to main domain areas: Dashboard, Nutrition, Training, Insights
 export default function BottomNav() {
     return (
         <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-10">
@@ -23,51 +23,55 @@ export default function BottomNav() {
                     aria-label="Dashboard"
                 >
                     <HomeIcon className="h-6 w-6" />
-                    <span>Dashboard</span>
+                    <span>Home</span>
                 </NavLink>
-                {/* Check In */}
+                
+                {/* Nutrition */}
                 <NavLink
-                    to="/planner/today"
+                    to="/nutrition"
                     className={({ isActive }) =>
                         `flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs rounded-md transition-colors ${isActive ? "text-green-700 bg-green-50" : "text-slate-600"}`
                     }
-                    aria-label="Planner"
+                    aria-label="Nutrition"
                 >
-                    <CalendarDaysIcon className="h-6 w-6" />
-                    <span>Planner</span>
+                    <SparklesIcon className="h-6 w-6" />
+                    <span>Nutrition</span>
                 </NavLink>
-                {/* Trends */}
+                
+                {/* Training */}
                 <NavLink
-                    to="/trends"
+                    to="/training"
                     className={({ isActive }) =>
                         `flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs rounded-md transition-colors ${isActive ? "text-green-700 bg-green-50" : "text-slate-600"}`
                     }
-                    aria-label="Trends"
+                    aria-label="Training"
+                >
+                    <FireIcon className="h-6 w-6" />
+                    <span>Training</span>
+                </NavLink>
+                
+                {/* Insights */}
+                <NavLink
+                    to="/insights"
+                    className={({ isActive }) =>
+                        `flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs rounded-md transition-colors ${isActive ? "text-green-700 bg-green-50" : "text-slate-600"}`
+                    }
+                    aria-label="Insights"
                 >
                     <ChartBarIcon className="h-6 w-6" />
-                    <span>Trends</span>
+                    <span>Insights</span>
                 </NavLink>
+                
                 {/* Profile */}
                 <NavLink
                     to="/profile"
                     className={({ isActive }) =>
                         `flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs rounded-md transition-colors ${isActive ? "text-green-700 bg-green-50" : "text-slate-600"}`
                     }
-                    aria-label="Health Profile"
+                    aria-label="Profile"
                 >
                     <UserCircleIcon className="h-6 w-6" />
-                    <span>Health</span>
-                </NavLink>
-                {/* Settings */}
-                <NavLink
-                    to="/settings"
-                    className={({ isActive }) =>
-                        `flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs rounded-md transition-colors ${isActive ? "text-green-700 bg-green-50" : "text-slate-600"}`
-                    }
-                    aria-label="Settings"
-                >
-                    <Cog6ToothIcon className="h-6 w-6" />
-                    <span>Settings</span>
+                    <span>Profile</span>
                 </NavLink>
             </div>
         </nav>

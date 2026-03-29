@@ -1,16 +1,16 @@
 import { useMemo, useState } from "react";
-import { useAppAuth } from "../../shared/auth/AuthContext";
-import { useAuthToken } from "../../shared/auth/useAuthToken";
-import { useAuthedQuery } from "../../shared/auth/useAuthedQuery";
-import { getActivityHistory, recordActivityCheckin } from "../../shared/api/activity";
-import { getWeightHistory, recordWeight } from "../../shared/api/weight";
-import { Button } from "../../shared/ui/Button";
-import { Card, CardBody, CardTitle, CardSubtitle } from "../../shared/ui/Card";
-import { TextField } from "../../shared/ui/TextField";
-import { Alert } from "../../shared/ui/Alert";
-import { ApiError } from "../../shared/api/client";
-import { Spinner } from "../../shared/ui/Spinner";
-import { MealLogCheckin } from "./MealLogCheckin";
+import { useAppAuth } from "../../../shared/auth/AuthContext";
+import { useAuthToken } from "../../../shared/auth/useAuthToken";
+import { useAuthedQuery } from "../../../shared/auth/useAuthedQuery";
+import { getActivityHistory, recordActivityCheckin } from "../../../shared/api/activity";
+import { getWeightHistory, recordWeight } from "../../../shared/api/weight";
+import { Button } from "../../../shared/ui/Button";
+import { Card, CardBody, CardTitle, CardSubtitle } from "../../../shared/ui/Card";
+import { TextField } from "../../../shared/ui/TextField";
+import { Alert } from "../../../shared/ui/Alert";
+import { ApiError } from "../../../shared/api/client";
+import { Spinner } from "../../../shared/ui/Spinner";
+import { MealLogCheckin } from "../components/MealLogCheckin";
 
 type WeightValidationErrors = {
     weight?: string;

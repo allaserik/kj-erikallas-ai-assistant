@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card } from "../../shared/ui/Card";
+import { Card } from "../../../shared/ui/Card";
 import { MealManagementUI } from "./MealManagementUI";
 
 export function MealManagementPage() {

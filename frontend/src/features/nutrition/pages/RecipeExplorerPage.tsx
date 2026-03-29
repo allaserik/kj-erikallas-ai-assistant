@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAppAuth } from "../../shared/auth/AuthContext";
-import { useAuthToken } from "../../shared/auth/useAuthToken";
-import { getNutritionOptions } from "../../shared/api/nutritionPreferences";
-import { getRecipeById, searchRecipes, type RecipeDetail, type RecipeListItem } from "../../shared/api/recipes";
-import { Alert } from "../../shared/ui/Alert";
-import { Button } from "../../shared/ui/Button";
-import { Card, CardBody, CardTitle } from "../../shared/ui/Card";
-import { Spinner } from "../../shared/ui/Spinner";
-import { TextField } from "../../shared/ui/TextField";
+import { useAppAuth } from "../../../shared/auth/AuthContext";
+import { useAuthToken } from "../../../shared/auth/useAuthToken";
+import { getNutritionOptions } from "../../../shared/api/nutritionPreferences";
+import { getRecipeById, searchRecipes, type RecipeDetail, type RecipeListItem } from "../../../shared/api/recipes";
+import { Alert } from "../../../shared/ui/Alert";
+import { Button } from "../../../shared/ui/Button";
+import { Card, CardBody, CardTitle } from "../../../shared/ui/Card";
+import { Spinner } from "../../../shared/ui/Spinner";
+import { TextField } from "../../../shared/ui/TextField";
 
 type Filters = {
     q: string;

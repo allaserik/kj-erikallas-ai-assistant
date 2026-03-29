@@ -1,9 +1,9 @@
-import { useAuthedQuery } from "../../shared/auth/useAuthedQuery";
-import { getWeightHistory } from "../../shared/api/weight";
-import { getPrimaryActiveGoal } from "../../shared/api/goals";
-import { getGoalMilestones } from "../../shared/api/goalProgress";
-import type { WeightEntry, PaginatedResponse } from "../../shared/types";
-import { useAppAuth } from "../../shared/auth/AuthContext";
+import { useAuthedQuery } from "../../../shared/auth/useAuthedQuery";
+import { getWeightHistory } from "../../../shared/api/weight";
+import { getPrimaryActiveGoal } from "../../../shared/api/goals";
+import { getGoalMilestones } from "../../../shared/api/goalProgress";
+import type { WeightEntry, PaginatedResponse } from "../../../shared/types";
+import { useAppAuth } from "../../../shared/auth/AuthContext";
 
 export type WeightRange = "30" | "90" | "all";
 

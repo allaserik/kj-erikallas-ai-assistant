@@ -2,22 +2,32 @@ import './App.css';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AppShell from './layout/AppShell';
 import DashboardPage from './features/dashboard/DashboardPage';
-import TrendsPage from './features/trends/TrendsPage';
 import GoalsPage from './features/goals/GoalsPage';
-import CheckInPage from './features/checkin/CheckInPage';
 import ProfilePage from './features/profile/ProfilePage';
 import SettingsPage from './features/settings/SettingsPage';
 import ConsentPage from './features/consent/ConsentPage';
-import NutritionPreferencesPage from './features/nutrition/NutritionPreferencesPage';
-import RecipeExplorerPage from './features/nutrition/RecipeExplorerPage';
-import ShoppingListPage from './features/nutrition/ShoppingListPage';
-import PlannerPage from './features/planner/PlannerPage';
-import MealPlanPage from './features/planner/MealPlanPage';
-import AIGeneratedMealPlansPage from './features/planner/AIGeneratedMealPlansPage';
-import { MealManagementPage } from './features/planner/MealManagementPage';
-import MealPlansHubPage from './features/planner/MealPlansHubPage';
-import SimpleMealGeneratorPage from './features/planner/SimpleMealGeneratorPage';
-import MealPlanDetailPage from './features/planner/MealPlanDetailPage';
+
+// Nutrition domain
+import NutritionPage from './features/nutrition/NutritionPage';
+import NutritionPreferencesPage from './features/nutrition/pages/NutritionPreferencesPage';
+import RecipeExplorerPage from './features/nutrition/pages/RecipeExplorerPage';
+import ShoppingListPage from './features/nutrition/pages/ShoppingListPage';
+import MealPlanPage from './features/nutrition/pages/MealPlanPage';
+import AIGeneratedMealPlansPage from './features/nutrition/pages/AIGeneratedMealPlansPage';
+import { MealManagementPage } from './features/nutrition/pages/MealManagementPage';
+import MealPlansHubPage from './features/nutrition/pages/MealPlansHubPage';
+import SimpleMealGeneratorPage from './features/nutrition/pages/SimpleMealGeneratorPage';
+import MealPlanDetailPage from './features/nutrition/pages/MealPlanDetailPage';
+
+// Training domain
+import TrainingPage from './features/training/TrainingPage';
+import CheckInPage from './features/training/pages/CheckInPage';
+
+// Insights domain
+import InsightsPage from './features/insights/InsightsPage';
+import TrendsPage from './features/insights/pages/TrendsPage';
+
+// Auth
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage';
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
@@ -58,25 +68,42 @@ function LoggedInContent() {
     <Routes>
       <Route path="/" element={<AppShell />}>
         <Route index element={<DashboardPage />} />
-        <Route path="planner" element={<PlannerPage />}>
+        
+        {/* Nutrition Domain */}
+        <Route path="nutrition" element={<NutritionPage />}>
           <Route index element={<MealPlansHubPage />} />
-          <Route path="today" element={<CheckInPage />} />
-          <Route path="meals" element={<MealPlanPage />} />
-          <Route path="goals" element={<GoalsPage />} />
-          <Route path="nutrition" element={<NutritionPreferencesPage />} />
+          <Route path="plans" element={<MealPlanPage />} />
+          <Route path="plan/:mealPlanId" element={<MealPlanDetailPage />} />
           <Route path="recipes" element={<RecipeExplorerPage />} />
-          <Route path="ai-generate" element={<AIGeneratedMealPlansPage />} />
           <Route path="shopping-list" element={<ShoppingListPage />} />
-          <Route path="manage-meals" element={<MealManagementPage />} />
-          <Route path="generate-meal-plan" element={<SimpleMealGeneratorPage />} />
-          <Route path="meal-plan/:mealPlanId" element={<MealPlanDetailPage />} />
+          <Route path="preferences" element={<NutritionPreferencesPage />} />
+          <Route path="generate" element={<SimpleMealGeneratorPage />} />
+          <Route path="ai-generate" element={<AIGeneratedMealPlansPage />} />
+          <Route path="manage" element={<MealManagementPage />} />
         </Route>
-        <Route path="trends" element={<TrendsPage />} />
-        <Route path="goals" element={<Navigate to="/planner/goals" replace />} />
-        <Route path="checkin" element={<Navigate to="/planner/today" replace />} />
+
+        {/* Training Domain */}
+        <Route path="training" element={<TrainingPage />}>
+          <Route index element={<CheckInPage />} />
+        </Route>
+
+        {/* Insights Domain */}
+        <Route path="insights" element={<InsightsPage />}>
+          <Route index element={<TrendsPage />} />
+        </Route>
+
+        {/* Goals */}
+        <Route path="goals" element={<GoalsPage />} />
+
+        {/* Profile & Settings */}
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
-        <Route path="nutrition/preferences" element={<Navigate to="/planner/nutrition" replace />} />
+
+        {/* Legacy route redirects for backward compatibility */}
+        <Route path="planner" element={<Navigate to="/nutrition" replace />} />
+        <Route path="planner/*" element={<Navigate to="/nutrition" replace />} />
+        <Route path="trends" element={<Navigate to="/insights" replace />} />
+        <Route path="checkin" element={<Navigate to="/training" replace />} />
       </Route>
     </Routes>
   );

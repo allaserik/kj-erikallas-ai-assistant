@@ -1,16 +1,16 @@
 import { useState } from "react";
-import { Alert } from "../../shared/ui/Alert";
-import { Spinner } from "../../shared/ui/Spinner";
-import { useWeightChartData } from "./useWeightChartData";
-import { WeightChart } from "./components/WeightChart";
+import { Alert } from "../../../shared/ui/Alert";
+import { Spinner } from "../../../shared/ui/Spinner";
+import { useWeightChartData } from "../hooks/useWeightChartData";
+import { WeightChart } from "../components/WeightChart";
 import { Link } from "react-router-dom";
-import { useAuthedQuery } from "../../shared/auth/useAuthedQuery";
-import { useAppAuth } from "../../shared/auth/AuthContext";
-import { getWellnessHistory } from "../../shared/api/wellness";
-import { getActivityHistory } from "../../shared/api/activity";
-import { WellnessEvolutionChart } from "./components/WellnessEvolutionChart";
-import { WellnessComponentsStackedChart } from "./components/WellnessComponentsStackedChart";
-import { ActivityHeatmap } from "./components/ActivityHeatmap";
+import { useAuthedQuery } from "../../../shared/auth/useAuthedQuery";
+import { useAppAuth } from "../../../shared/auth/AuthContext";
+import { getWellnessHistory } from "../../../shared/api/wellness";
+import { getActivityHistory } from "../../../shared/api/activity";
+import { WellnessEvolutionChart } from "../components/WellnessEvolutionChart";
+import { WellnessComponentsStackedChart } from "../components/WellnessComponentsStackedChart";
+import { ActivityHeatmap } from "../components/ActivityHeatmap";
 
 export default function TrendsPage() {
     const [range, setRange] = useState<"30" | "90" | "all">("90");

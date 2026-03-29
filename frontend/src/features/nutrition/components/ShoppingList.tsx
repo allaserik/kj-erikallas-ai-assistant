@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { useAuthToken } from "../../shared/auth/useAuthToken";
-import { generateShoppingListFromMeals, generateShoppingListFromDateRange, type ShoppingListResponse, type ShoppingListItem } from "../../shared/api/nutrition";
-import { Button } from "../../shared/ui/Button";
-import { Card, CardBody, CardTitle, CardSubtitle } from "../../shared/ui/Card";
-import { Alert } from "../../shared/ui/Alert";
-import { ApiError } from "../../shared/api/client";
-import { Spinner } from "../../shared/ui/Spinner";
+import { useAuthToken } from "../../../shared/auth/useAuthToken";
+import { generateShoppingListFromMeals, generateShoppingListFromDateRange, type ShoppingListResponse, type ShoppingListItem } from "../../../shared/api/nutrition";
+import { Button } from "../../../shared/ui/Button";
+import { Card, CardBody, CardTitle, CardSubtitle } from "../../../shared/ui/Card";
+import { Alert } from "../../../shared/ui/Alert";
+import { ApiError } from "../../../shared/api/client";
+import { Spinner } from "../../../shared/ui/Spinner";
 
 interface ShoppingListProps {
     mealIds?: string[];

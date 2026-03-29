@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { useAuthToken } from "../../shared/auth/useAuthToken";
-import { useAuthedQuery } from "../../shared/auth/useAuthedQuery";
-import { getMealsForDate, logMeal, logCustomMeal, deleteMealLog } from "../../shared/api/nutrition";
-import { searchRecipes } from "../../shared/api/recipes";
-import { Button } from "../../shared/ui/Button";
-import { Card, CardBody, CardTitle, CardSubtitle } from "../../shared/ui/Card";
-import { TextField } from "../../shared/ui/TextField";
-import { Alert } from "../../shared/ui/Alert";
-import { ApiError } from "../../shared/api/client";
-import { Spinner } from "../../shared/ui/Spinner";
+import { useAuthToken } from "../../../shared/auth/useAuthToken";
+import { useAuthedQuery } from "../../../shared/auth/useAuthedQuery";
+import { getMealsForDate, logMeal, logCustomMeal, deleteMealLog } from "../../../shared/api/nutrition";
+import { searchRecipes } from "../../../shared/api/recipes";
+import { Button } from "../../../shared/ui/Button";
+import { Card, CardBody, CardTitle, CardSubtitle } from "../../../shared/ui/Card";
+import { TextField } from "../../../shared/ui/TextField";
+import { Alert } from "../../../shared/ui/Alert";
+import { ApiError } from "../../../shared/api/client";
+import { Spinner } from "../../../shared/ui/Spinner";
 
 type MealLogValidationErrors = {
     recipeId?: string;

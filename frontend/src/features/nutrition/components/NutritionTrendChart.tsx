@@ -11,10 +11,10 @@ import {
     Legend,
     ResponsiveContainer,
 } from "recharts";
-import { useAuthToken } from "../../shared/auth/useAuthToken";
-import { getDailyTrends, getWeeklyTrends, getMonthlySummaries } from "../../shared/api/nutrition";
-import { Spinner } from "../../shared/ui/Spinner";
-import { Alert } from "../../shared/ui/Alert";
+import { useAuthToken } from "../../../shared/auth/useAuthToken";
+import { getDailyTrends, getWeeklyTrends, getMonthlySummaries } from "../../../shared/api/nutrition";
+import { Spinner } from "../../../shared/ui/Spinner";
+import { Alert } from "../../../shared/ui/Alert";
 
 type TrendMode = "daily" | "weekly" | "monthly";
 

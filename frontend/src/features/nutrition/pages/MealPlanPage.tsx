@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { useAppAuth } from "../../shared/auth/AuthContext";
-import { useAuthToken } from "../../shared/auth/useAuthToken";
-import { generateMealPlan, getLatestMealPlan, getMealPlanById, type GeneratedMealPlan } from "../../shared/api/mealPlans";
-import { Alert } from "../../shared/ui/Alert";
-import { Button } from "../../shared/ui/Button";
-import { Card, CardBody, CardTitle } from "../../shared/ui/Card";
-import { Spinner } from "../../shared/ui/Spinner";
-import { TextField } from "../../shared/ui/TextField";
+import { useAppAuth } from "../../../shared/auth/AuthContext";
+import { useAuthToken } from "../../../shared/auth/useAuthToken";
+import { generateMealPlan, getLatestMealPlan, getMealPlanById, type GeneratedMealPlan } from "../../../shared/api/mealPlans";
+import { Alert } from "../../../shared/ui/Alert";
+import { Button } from "../../../shared/ui/Button";
+import { Card, CardBody, CardTitle } from "../../../shared/ui/Card";
+import { Spinner } from "../../../shared/ui/Spinner";
+import { TextField } from "../../../shared/ui/TextField";
 
 type Duration = "daily" | "weekly";
 const LAST_MEAL_PLAN_ID_KEY = "ndl_last_meal_plan_id";
@@ -106,7 +106,7 @@ export default function MealPlanPage() {
                             label="Start date"
                             type="date"
                             value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStartDate(e.target.value)}
                         />
                         <div className="flex items-end">
                             <Button type="submit" disabled={isGenerating || !isAuthenticated}>
@@ -126,14 +126,14 @@ export default function MealPlanPage() {
                     </CardTitle>
                     <CardBody>
                         <div className="space-y-4">
-                            {result.days.map((day) => (
+                            {result.days.map((day: any) => (
                                 <div key={day.date} className="border border-slate-200 rounded-lg p-3">
                                     <h3 className="font-semibold text-slate-900 mb-2">{day.date}</h3>
                                     {day.meals.length === 0 ? (
                                         <p className="text-sm text-slate-600">No meals generated for this day.</p>
                                     ) : (
                                         <div className="space-y-2">
-                                            {day.meals.map((meal) => (
+                                            {day.meals.map((meal: any) => (
                                                 <div
                                                     key={meal.id}
                                                     className="border border-slate-100 rounded-md px-3 py-2 bg-slate-50"

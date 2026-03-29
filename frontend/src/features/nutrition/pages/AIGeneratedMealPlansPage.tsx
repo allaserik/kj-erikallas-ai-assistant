@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import { useAppAuth } from "../../shared/auth/AuthContext";
-import { useAuthToken } from "../../shared/auth/useAuthToken";
+import { useAppAuth } from "../../../shared/auth/AuthContext";
+import { useAuthToken } from "../../../shared/auth/useAuthToken";
 import {
     generateAIMealPlan,
     searchRecipesByQuery,
     type AIGenerationRequest,
     type GeneratedMealPlan,
     type RecipeSearchResult,
-} from "../../shared/api/mealPlans";
+} from "../../../shared/api/mealPlans";
 
 export default function AIGeneratedMealPlansPage() {
     const { isAuthenticated } = useAppAuth();

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useAppAuth } from "../../shared/auth/AuthContext";
-import { useAuthToken } from "../../shared/auth/useAuthToken";
-import { getLatestMealPlan, type GeneratedMealPlan } from "../../shared/api/mealPlans";
+import { useAppAuth } from "../../../shared/auth/AuthContext";
+import { useAuthToken } from "../../../shared/auth/useAuthToken";
+import { getLatestMealPlan, type GeneratedMealPlan } from "../../../shared/api/mealPlans";
 import { Link } from "react-router-dom";
 
 /**

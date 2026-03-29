@@ -9,6 +9,8 @@
         "npm install": true,
         "mvn clean": true,
         "pkill": true,
-        "true": true
+        "true": true,
+        "mv": true,
+        "cp": true
     }
 }
