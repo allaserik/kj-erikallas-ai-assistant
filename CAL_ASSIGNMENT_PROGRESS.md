@@ -35,13 +35,14 @@
 
 ## Meal Planning - Customization
 
-- [ ] Alternative meal suggestions provided
-- [ ] Users can swap generated meals in plan
-- [ ] Users can manually add custom meals
-- [ ] Users can regenerate entire meal plan while preserving preferences
-- [ ] Users can regenerate individual meals while preserving preferences
-- [ ] Users can reorder meals within a day
-- [ ] Users can swap meals between different days
+- [x] Alternative meal suggestions provided
+- [x] Users can swap generated meals in plan
+- [x] Users can manually add custom meals
+- [ ] Users can regenerate entire meal plan while preserving preferences (PHASE 4+)
+- [ ] Users can regenerate individual meals while preserving preferences (PHASE 4+)
+- [x] Users can reorder meals within a day
+- [x] Users can swap meals between different days
+- [x] **NEW:** Users can delete meals from plan
 
 ## Shopping List
 
@@ -153,20 +154,43 @@
 3. Nutrition dashboard with summary
 4. Basic nutrition tracking
 
+### � Recently Completed (This Sprint):
+
+1. **Meal Customization Tools:**
+   - ✅ Delete meal from plan with position index adjustment
+   - ✅ Swap meals between days (both on same day or different days)
+   - ✅ Reorder meals within a day
+   - ✅ Replace meal recipe from library
+   - ✅ Manually add meals to specific day/time with recipe selection
+
+2. **Backend APIs Added:**
+   - `POST /api/meal-plans/meals/{mealId}/delete` - Delete meal from plan
+   - `POST /api/meal-plans/{mealPlanId}/add-meal` - Add new meal to plan
+   - `POST /api/meal-plans/ai/meals/{mealId}/regenerate` - Regenerate single meal (stub)
+
+3. **Frontend UI Components:**
+   - Updated MealManagementUI with delete buttons
+   - Added "+ Add Meal" modal with recipe selection
+   - Added meal type selector (breakfast/lunch/dinner/snack)
+   - Recipe scrollable list selector
+
+4. **Database Enhancements:**
+   - Added `findByMealPlanIdAndDayDate()` method to MealPlanMealRepository
+   - Support for position index management on deletion
+
 ### 🟡 Partially Complete:
 
 - User profile data model (needs dietary preferences, allergies, intolerances)
-- Meal plan structure (basic structure exists, needs full customization)
+- Meal plan structure (basic structure exists, needs full customization) ✅
+- Customization Tools (Swap/Reorder/Replace) ✅ | Missing: Regenerate (PHASE 4+)
 
-### ❌ Not Started:
+### ❌ Not Started (Remaining from CAL_ASSIGNMENT):
 
-- Retrieval-Augmented Generation (RAG) system
-- Vector embeddings for recipes
-- Sequential prompting orchestration (3+ steps)
-- Function calling for nutrition calculations
-- AI recipe generation
-- Shopping list generation
-- Advanced filtering and search
+- Shopping list generation and categorization
+- Advanced recipe search and filtering (by calories, macros, prep time)
+- Regenerate entire meal plan (PHASE 4+)
+- Regenerate individual meals with AI (PHASE 4+)
+- Alternative meal suggestions UI (PHASE 4+)
 - Ingredient substitution AI
-- Comprehensive error handling
-- Full documentation
+- Comprehensive error handling improvements
+- Full documentation updates

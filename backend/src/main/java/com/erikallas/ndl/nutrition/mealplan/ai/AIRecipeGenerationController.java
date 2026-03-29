@@ -192,4 +192,28 @@ public class AIRecipeGenerationController {
             throw new RuntimeException("Meal plan generation failed: " + e.getMessage(), e);
         }
     }
+
+    /**
+     * PHASE 4+: Regenerate a single meal in a meal plan.
+     * 
+     * Uses semantic search and sequential prompting to generate a replacement meal
+     * for a specific meal slot while preserving meal type and nutrition
+     * constraints.
+     * 
+     * @param auth    JWT authentication
+     * @param mealId  ID of the meal to regenerate
+     * @param request Preferences for regeneration (optional overrides)
+     * @return Updated meal with new recipe
+     */
+    @PostMapping("/meals/{mealId}/regenerate")
+    public ApiSuccess<String> regenerateMeal(JwtAuthenticationToken auth, @PathVariable String mealId,
+            @RequestBody(required = false) Map<String, Object> request) {
+
+        var user = userService.ensureUserFromJwt(auth);
+
+        // PHASE 4+: This endpoint is planned but not yet implemented
+        // It will use semantic search to find alternative recipes for the meal slot
+        logger.info("Regenerate meal {} for user {} - Deferred to Phase 4+", mealId, user.getId());
+        return ApiSuccess.of("Meal regeneration is planned for Phase 4+. Use Swap or Replace features for now.");
+    }
 }

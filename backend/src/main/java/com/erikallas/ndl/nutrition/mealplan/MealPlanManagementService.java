@@ -139,4 +139,72 @@ public class MealPlanManagementService {
         mealPlanMealRepository.save(updatedMeal);
         logger.info("Replaced meal {} with recipe {}", mealId, newRecipeId);
     }
+
+    /**
+     * Delete a meal from a meal plan.
+     * 
+     * After deletion, position indices of remaining meals on that day are adjusted.
+     * 
+     * @param mealId Meal to delete
+     * @param now    Current timestamp
+     */
+    @Transactional
+    public void deleteMeal(UUID mealId, OffsetDateTime now) {
+        var meal = mealPlanMealRepository.findById(mealId)
+                .orElseThrow(() -> new IllegalArgumentException("Meal not found: " + mealId));
+
+        var mealPlanId = meal.getMealPlanId();
+        var dayDate = meal.getDayDate();
+        var deletedPosition = meal.getPositionIndex();
+
+        // Delete the meal
+        mealPlanMealRepository.deleteById(mealId);
+
+        // Adjust position indices for remaining meals on the same day
+        var remainingMeals = mealPlanMealRepository.findByMealPlanIdAndDayDate(mealPlanId, dayDate);
+        for (var remainingMeal : remainingMeals) {
+            if (remainingMeal.getPositionIndex() > deletedPosition) {
+                // Shift positions down
+                var updatedMeal = new MealPlanMealEntity(remainingMeal.getId(), remainingMeal.getMealPlanId(),
+                        remainingMeal.getDayDate(), remainingMeal.getMealType(), remainingMeal.getRecipeId(),
+                        remainingMeal.getPositionIndex() - 1, remainingMeal.getCreatedAt(), now);
+                mealPlanMealRepository.save(updatedMeal);
+            }
+        }
+
+        logger.info("Deleted meal {} from day {}", mealId, dayDate);
+    }
+
+    /**
+     * Add a new meal to a meal plan for a specific day.
+     * 
+     * The meal is appended as the last meal of the day (highest position index).
+     * 
+     * @param mealPlanId Which meal plan to add to
+     * @param dayDate    Which day to add the meal
+     * @param mealType   Type of meal (breakfast, lunch, dinner, snack)
+     * @param recipeId   Recipe to use
+     * @param now        Current timestamp
+     * @return The created meal ID
+     */
+    @Transactional
+    public UUID addMealToDay(UUID mealPlanId, java.time.LocalDate dayDate, String mealType, UUID recipeId,
+            OffsetDateTime now) {
+        if (mealType == null || mealType.isBlank()) {
+            throw new IllegalArgumentException("Meal type cannot be empty");
+        }
+
+        // Get existing meals for this day to find max position
+        var existingMeals = mealPlanMealRepository.findByMealPlanIdAndDayDate(mealPlanId, dayDate);
+        int nextPosition = existingMeals.stream().mapToInt(MealPlanMealEntity::getPositionIndex).max().orElse(-1) + 1;
+
+        // Create new meal entity
+        var newMeal = new MealPlanMealEntity(UUID.randomUUID(), mealPlanId, dayDate, mealType, recipeId, nextPosition,
+                now, now);
+
+        mealPlanMealRepository.save(newMeal);
+        logger.info("Added meal to plan {} on day {} at position {}", mealPlanId, dayDate, nextPosition);
+
+        return newMeal.getId();
+    }
 }

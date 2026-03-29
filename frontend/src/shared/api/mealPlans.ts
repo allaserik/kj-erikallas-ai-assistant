@@ -170,3 +170,61 @@ export function replaceMeal(mealId: string, recipeId: string, token: string): Pr
         )
         .then((response) => unwrapApiData(response));
 }
+
+/**
+ * Delete a meal from a meal plan.
+ * Position indices for remaining meals are automatically adjusted.
+ * 
+ * @param mealId Meal ID to delete
+ * @param token Auth token
+ */
+export function deleteMeal(mealId: string, token: string): Promise<string | null> {
+    return api
+        .post<string | null | ApiResponse<string | null>>(
+            `/api/meal-plans/meals/${mealId}/delete`,
+            {},
+            token
+        )
+        .then((response) => unwrapApiData(response));
+}
+
+/**
+ * Add a new meal to a meal plan for a specific day.
+ * 
+ * @param mealPlanId Which meal plan to add to
+ * @param dayDate Which day to add (ISO string: YYYY-MM-DD)
+ * @param mealType Type of meal (breakfast, lunch, dinner, snack)
+ * @param recipeId Recipe to use
+ * @param token Auth token
+ */
+export function addMealToDay(
+    mealPlanId: string,
+    dayDate: string,
+    mealType: string,
+    recipeId: string,
+    token: string
+): Promise<string | null> {
+    return api
+        .post<string | null | ApiResponse<string | null>>(
+            `/api/meal-plans/${mealPlanId}/add-meal`,
+            { dayDate, mealType, recipeId },
+            token
+        )
+        .then((response) => unwrapApiData(response));
+}
+
+/**
+ * Regenerate a single meal in a meal plan (PHASE 4+).
+ * 
+ * @param mealId Meal ID to regenerate
+ * @param token Auth token
+ */
+export function regenerateMeal(mealId: string, token: string): Promise<string | null> {
+    return api
+        .post<string | null | ApiResponse<string | null>>(
+            `/api/meal-plans/ai/meals/${mealId}/regenerate`,
+            {},
+            token
+        )
+        .then((response) => unwrapApiData(response));
+}

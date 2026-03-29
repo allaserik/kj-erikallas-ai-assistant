@@ -46,7 +46,7 @@ export default function MealPlansHubPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Generate New Plan */}
                 <Link
-                    to="/planner/generate-meal-plan"
+                    to="/nutrition/generate"
                     className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-6 text-white hover:shadow-lg transition cursor-pointer"
                 >
                     <div className="text-3xl mb-2">✨</div>
@@ -56,32 +56,32 @@ export default function MealPlansHubPage() {
                     </p>
                 </Link>
 
-                {/* View Current Plan */}
+                {/* View & Manage Current Plan */}
                 <Link
-                    to={latestPlan ? `/planner/meal-plan/${latestPlan.mealPlanId}` : "#"}
+                    to={latestPlan ? `/nutrition/plan/${latestPlan.mealPlanId}` : "#"}
                     className={`rounded-lg p-6 transition ${latestPlan
                         ? "bg-blue-50 border border-blue-200 hover:shadow-lg cursor-pointer"
                         : "bg-slate-50 border border-slate-200 cursor-not-allowed opacity-50"
                         }`}
                 >
                     <div className="text-3xl mb-2">📅</div>
-                    <h3 className="font-semibold text-lg text-slate-900">View Current Plan</h3>
+                    <h3 className="font-semibold text-lg text-slate-900">View & Manage Plan</h3>
                     <p className="text-sm text-slate-600 mt-2">
                         {latestPlan
-                            ? `Plan until ${new Date(latestPlan.endDate).toLocaleDateString()}`
+                            ? `View all meals and swap, reorder, or add meals (until ${new Date(latestPlan.endDate).toLocaleDateString()})`
                             : "No active meal plan"}
                     </p>
                 </Link>
 
-                {/* Log Meals */}
+                {/* Quick Edit Today */}
                 <Link
-                    to="/planner/today"
-                    className="bg-orange-50 border border-orange-200 rounded-lg p-6 hover:shadow-lg transition cursor-pointer"
+                    to="/nutrition/manage"
+                    className="bg-indigo-50 border border-indigo-200 rounded-lg p-6 hover:shadow-lg transition cursor-pointer"
                 >
-                    <div className="text-3xl mb-2">🍽️</div>
-                    <h3 className="font-semibold text-lg text-slate-900">Log Meals</h3>
+                    <div className="text-3xl mb-2">⚡</div>
+                    <h3 className="font-semibold text-lg text-slate-900">Quick Edit Today</h3>
                     <p className="text-sm text-slate-600 mt-2">
-                        Track what you eat today and monitor nutrition
+                        Quickly swap, reorder, or replace meals for a specific date
                     </p>
                 </Link>
             </div>
@@ -114,7 +114,7 @@ export default function MealPlansHubPage() {
                     </div>
 
                     <Link
-                        to={`/planner/meal-plan/${latestPlan.mealPlanId}`}
+                        to={`/nutrition/plan/${latestPlan.mealPlanId}`}
                         className="inline-block mt-4 text-green-600 hover:text-green-700 font-medium text-sm"
                     >
                         View full plan →

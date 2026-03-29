@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useAuthToken } from "../../../shared/auth/useAuthToken";
 import { getMealPlanById, type GeneratedMealPlan, type MealPlanMealItem } from "../../../shared/api/mealPlans";
+import { MealManagementUI } from "./MealManagementUI";
 
 /**
  * MealPlanDetailPage: Shows a complete generated meal plan
  * Displays all days, meals, and nutrition information
+ * Integrated with meal management for swap, reorder, replace, and add operations
  */
 export default function MealPlanDetailPage() {
     const { mealPlanId } = useParams<{ mealPlanId: string }>();
@@ -18,6 +20,7 @@ export default function MealPlanDetailPage() {
     const [error, setError] = useState<string | null>(null);
     const [selectedDay, setSelectedDay] = useState(0);
     const [selectedMeal, setSelectedMeal] = useState<MealPlanMealItem | null>(null);
+    const [refreshKey, setRefreshKey] = useState(0);
 
     const isNewlyGenerated = (location.state as any)?.newlyGenerated ?? false;
 
@@ -40,7 +43,7 @@ export default function MealPlanDetailPage() {
         };
 
         if (mealPlanId) loadMealPlan();
-    }, [mealPlanId, getToken]);
+    }, [mealPlanId, getToken, refreshKey]);
 
     if (loading) {
         return <div className="text-center text-slate-600 py-12">Loading meal plan...</div>;
@@ -135,67 +138,16 @@ export default function MealPlanDetailPage() {
                 </div>
             </div>
 
-            {/* Meals List */}
-            <div className="space-y-4">
-                {currentDay.meals.map((meal, idx) => (
-                    <div
-                        key={idx}
-                        onClick={() => setSelectedMeal(meal)}
-                        className="bg-white border border-slate-200 rounded-lg p-6 hover:shadow-md hover:border-green-300 cursor-pointer transition"
-                    >
-                        <div className="flex items-start justify-between mb-4">
-                            <div>
-                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                                    {meal.mealType}
-                                </p>
-                                <h3 className="text-lg font-semibold text-slate-900">{meal.recipeTitle}</h3>
-                            </div>
-                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                                Click to view
-                            </span>
-                        </div>
-
-                        {/* Cuisine */}
-                        {meal.cuisine && (
-                            <p className="text-sm text-slate-600 mb-4">Cuisine: {meal.cuisine}</p>
-                        )}
-
-                        {/* Nutrition Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                            <div className="bg-blue-50 rounded p-3">
-                                <p className="text-xs text-slate-600 mb-1">Calories</p>
-                                <p className="font-semibold text-slate-900">
-                                    {meal.caloriesKcal ? Math.round(meal.caloriesKcal) : "—"} kcal
-                                </p>
-                            </div>
-                            <div className="bg-red-50 rounded p-3">
-                                <p className="text-xs text-slate-600 mb-1">Protein</p>
-                                <p className="font-semibold text-slate-900">
-                                    {meal.proteinG ? Math.round(meal.proteinG) : "—"}g
-                                </p>
-                            </div>
-                            <div className="bg-yellow-50 rounded p-3">
-                                <p className="text-xs text-slate-600 mb-1">Carbs</p>
-                                <p className="font-semibold text-slate-900">
-                                    {meal.carbsG ? Math.round(meal.carbsG) : "—"}g
-                                </p>
-                            </div>
-                            <div className="bg-orange-50 rounded p-3">
-                                <p className="text-xs text-slate-600 mb-1">Fat</p>
-                                <p className="font-semibold text-slate-900">
-                                    {meal.fatsG ? Math.round(meal.fatsG) : "—"}g
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Time */}
-                        {meal.timeMinutes && (
-                            <p className="text-sm text-slate-600">
-                                ⏱️ {meal.timeMinutes} minutes
-                            </p>
-                        )}
-                    </div>
-                ))}
+            {/* Manage Meals */}
+            <div className="mb-8">
+                <h2 className="text-xl font-semibold text-slate-900 mb-4">Manage Meals</h2>
+                <MealManagementUI
+                    key={refreshKey}
+                    date={currentDay.date}
+                    onMealsUpdated={() => {
+                        setRefreshKey((prev) => prev + 1);
+                    }}
+                />
             </div>
 
             {/* Future Features */}

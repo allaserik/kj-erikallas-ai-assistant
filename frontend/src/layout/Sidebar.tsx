@@ -56,6 +56,14 @@ export default function Sidebar() {
                 >
                     <span className="text-xs">Shopping List</span>
                 </NavLink>
+                <NavLink
+                    to="/nutrition/manage"
+                    className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 pl-8 rounded-lg text-sm font-medium transition-colors ${isActive ? "bg-green-50 text-green-700" : "text-slate-600 hover:bg-slate-50"}`
+                    }
+                >
+                    <span className="text-xs">Manage Meals</span>
+                </NavLink>
 
                 {/* TRAINING DOMAIN */}
                 <div className="mt-4 mb-2 px-3">

@@ -111,6 +111,38 @@ public class MealPlanController {
         return ApiSuccess.of("Meal replaced successfully");
     }
 
+    /**
+     * DELETE /api/meal-plans/meals/{mealId}
+     * 
+     * Delete a meal from a meal plan. Position indices for remaining meals on that
+     * day are adjusted automatically.
+     */
+    @PostMapping("/api/meal-plans/meals/{mealId}/delete")
+    public ApiSuccess<String> deleteMeal(@PathVariable UUID mealId, JwtAuthenticationToken auth) {
+        var user = userService.ensureUserFromJwt(auth);
+        var now = OffsetDateTime.now(ZoneOffset.UTC);
+        mealPlanManagementService.deleteMeal(mealId, now);
+        return ApiSuccess.of("Meal deleted successfully");
+    }
+
+    /**
+     * POST /api/meal-plans/{mealPlanId}/add-meal
+     * 
+     * Add a new meal to a meal plan for a specific day.
+     * 
+     * Request body: { dayDate: "YYYY-MM-DD", mealType:
+     * "breakfast|lunch|dinner|snack", recipeId: "uuid" }
+     */
+    @PostMapping("/api/meal-plans/{mealPlanId}/add-meal")
+    public ApiSuccess<String> addMealToDay(@PathVariable UUID mealPlanId, @RequestBody AddMealRequest request,
+            JwtAuthenticationToken auth) {
+        var user = userService.ensureUserFromJwt(auth);
+        var now = OffsetDateTime.now(ZoneOffset.UTC);
+        var createdMealId = mealPlanManagementService.addMealToDay(mealPlanId, request.dayDate(), request.mealType(),
+                request.recipeId(), now);
+        return ApiSuccess.of("Meal added successfully with ID: " + createdMealId);
+    }
+
     // ===== Request DTOs =====
 
     public record ReorderMealsRequest(List<UUID> mealIds) {
@@ -120,5 +152,8 @@ public class MealPlanController {
     }
 
     public record ReplaceMealRequest(UUID recipeId) {
+    }
+
+    public record AddMealRequest(LocalDate dayDate, String mealType, UUID recipeId) {
     }
 }
