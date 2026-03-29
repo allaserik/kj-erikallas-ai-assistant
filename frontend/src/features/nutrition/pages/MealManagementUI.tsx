@@ -5,15 +5,15 @@ import { Button } from "../../../shared/ui/Button";
 import { useAuthToken } from "../../../shared/auth/useAuthToken";
 import {
     reorderMeals,
-    swapMeals,
     replaceMeal,
     deleteMeal,
     addMealToDay,
     getLatestMealPlan,
+    getAlternativeMeals,
     type MealPlanMealItem,
     type GeneratedMealPlan,
 } from "../../../shared/api/mealPlans";
-import { searchRecipes, type RecipeListItem } from "../../../shared/api/recipes";
+import { searchRecipes, type RecipeListItem, type RecipeDetail } from "../../../shared/api/recipes";
 
 export interface MealManagementUIProps {
     /**
@@ -38,6 +38,9 @@ export function MealManagementUI({ date, onMealsUpdated }: MealManagementUIProps
     // UI state for interactions
     const [selectedMeal, setSelectedMeal] = useState<MealPlanMealItem | null>(null);
     const [selectedMealForSwap, setSelectedMealForSwap] = useState<string | null>(null);
+    const [showAlternatives, setShowAlternatives] = useState(false);
+    const [alternativeMeals, setAlternativeMeals] = useState<RecipeDetail[]>([]);
+    const [isLoadingAlternatives, setIsLoadingAlternatives] = useState(false);
     const [replacingMealId, setReplacingMealId] = useState<string | null>(null);
     const [newRecipeIdForReplace, setNewRecipeIdForReplace] = useState<string>("");
     const [isAddingMeal, setIsAddingMeal] = useState(false);
@@ -123,22 +126,46 @@ export function MealManagementUI({ date, onMealsUpdated }: MealManagementUIProps
         }
     };
 
-    // Handle swapping two meals
-    const handleSwapMeal = async (mealId2: string) => {
+    // Handle loading alternatives for a meal
+    const handleLoadAlternatives = async (mealId: string) => {
         if (!token) {
             setError("Not authenticated");
             return;
         }
-        if (!selectedMealForSwap) return;
+
+        try {
+            setError(null);
+            setIsLoadingAlternatives(true);
+            const alternatives = await getAlternativeMeals(mealId, 5, token);
+            setAlternativeMeals(alternatives);
+            setSelectedMealForSwap(mealId);
+            setShowAlternatives(true);
+        } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : "Failed to load alternatives";
+            setError(errorMsg);
+            setShowAlternatives(false);
+        } finally {
+            setIsLoadingAlternatives(false);
+        }
+    };
+
+    // Handle replacing a meal with an alternative
+    const handleReplaceWithAlternative = async (alternativeRecipeId: string) => {
+        if (!token || !selectedMealForSwap) {
+            setError("Not authenticated");
+            return;
+        }
 
         try {
             setError(null);
             setSuccess(null);
 
-            await swapMeals(selectedMealForSwap, mealId2, token);
+            await replaceMeal(selectedMealForSwap, alternativeRecipeId, token);
 
-            setSuccess("Meals swapped successfully!");
+            setSuccess("Meal replaced successfully!");
+            setShowAlternatives(false);
             setSelectedMealForSwap(null);
+            setAlternativeMeals([]);
             onMealsUpdated?.();
 
             // Reload meals
@@ -149,7 +176,7 @@ export function MealManagementUI({ date, onMealsUpdated }: MealManagementUIProps
             // Clear success message after 3 seconds
             setTimeout(() => setSuccess(null), 3000);
         } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : "Failed to swap meals";
+            const errorMsg = err instanceof Error ? err.message : "Failed to replace meal";
             setError(errorMsg);
         }
     };
@@ -364,18 +391,15 @@ export function MealManagementUI({ date, onMealsUpdated }: MealManagementUIProps
                             <div className="flex gap-1">
                                 {/* Swap Button - Most common action */}
                                 <button
-                                    onClick={() =>
-                                        selectedMealForSwap === meal.id
-                                            ? setSelectedMealForSwap(null)
-                                            : setSelectedMealForSwap(meal.id)
-                                    }
-                                    className={`px-3 py-1 text-sm rounded font-medium transition ${selectedMealForSwap === meal.id
+                                    onClick={() => handleLoadAlternatives(meal.id)}
+                                    disabled={isLoadingAlternatives && selectedMealForSwap === meal.id}
+                                    className={`px-3 py-1 text-sm rounded font-medium transition ${selectedMealForSwap === meal.id && showAlternatives
                                         ? "bg-blue-500 text-white"
                                         : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-                                        }`}
-                                    title="Swap with another meal"
+                                        } ${isLoadingAlternatives && selectedMealForSwap === meal.id ? "opacity-50 cursor-not-allowed" : ""}`}
+                                    title="Find alternative meals"
                                 >
-                                    Swap
+                                    {isLoadingAlternatives && selectedMealForSwap === meal.id ? "Loading..." : "Swap"}
                                 </button>
 
                                 {/* Delete Button */}
@@ -430,33 +454,48 @@ export function MealManagementUI({ date, onMealsUpdated }: MealManagementUIProps
                     ))}
                 </div>
 
-                {/* Swap interaction UI */}
-                {selectedMealForSwap && (
+                {/* Swap with Alternatives Modal */}
+                {showAlternatives && selectedMealForSwap && (
                     <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                         <p className="text-sm font-medium text-blue-900 mb-3">
-                            Select another meal to swap with
+                            💡 Alternative meals for {meals.find((m) => m.id === selectedMealForSwap)?.mealType || "meal"}:
                         </p>
-                        <div className="flex gap-2 flex-wrap">
-                            {meals.map((meal) => (
-                                <button
-                                    key={meal.id}
-                                    onClick={() => handleSwapMeal(meal.id)}
-                                    disabled={meal.id === selectedMealForSwap}
-                                    className={`px-3 py-2 text-sm rounded font-medium transition ${meal.id === selectedMealForSwap
-                                        ? "opacity-50 cursor-not-allowed"
-                                        : "bg-blue-500 text-white hover:bg-blue-600"
-                                        }`}
-                                >
-                                    {meal.mealType}
-                                </button>
-                            ))}
-                            <button
-                                onClick={() => setSelectedMealForSwap(null)}
-                                className="px-3 py-2 text-sm bg-gray-300 text-gray-700 hover:bg-gray-400 rounded font-medium transition"
-                            >
-                                Cancel
-                            </button>
-                        </div>
+                        {alternativeMeals.length === 0 ? (
+                            <p className="text-sm text-blue-700 mb-3">No alternatives found. Try a different meal.</p>
+                        ) : (
+                            <div className="space-y-3 max-h-72 overflow-y-auto">
+                                {alternativeMeals.map((alt) => (
+                                    <div key={alt.id} className="p-3 bg-white border border-blue-100 rounded hover:border-blue-300 transition">
+                                        <div className="flex justify-between items-start gap-3">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-semibold text-gray-800">{alt.title}</div>
+                                                {alt.cuisine && <div className="text-xs text-gray-500">{alt.cuisine}</div>}
+                                                <div className="text-xs text-gray-600 mt-1">
+                                                    {Math.round(alt.nutrition.caloriesKcal)} cal • {Math.round(alt.nutrition.proteinG)}g protein • {Math.round(alt.nutrition.carbsG)}g carbs • {Math.round(alt.nutrition.fatsG)}g fat
+                                                </div>
+                                                {alt.timeMinutes && <div className="text-xs text-gray-500 mt-1">⏱ {alt.timeMinutes} min</div>}
+                                            </div>
+                                            <button
+                                                onClick={() => handleReplaceWithAlternative(alt.id)}
+                                                className="px-3 py-1 text-sm bg-blue-500 text-white hover:bg-blue-600 rounded font-medium whitespace-nowrap transition"
+                                            >
+                                                Choose
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <button
+                            onClick={() => {
+                                setShowAlternatives(false);
+                                setSelectedMealForSwap(null);
+                                setAlternativeMeals([]);
+                            }}
+                            className="mt-3 px-3 py-2 text-sm bg-gray-300 text-gray-700 hover:bg-gray-400 rounded font-medium transition"
+                        >
+                            Cancel
+                        </button>
                     </div>
                 )}
 

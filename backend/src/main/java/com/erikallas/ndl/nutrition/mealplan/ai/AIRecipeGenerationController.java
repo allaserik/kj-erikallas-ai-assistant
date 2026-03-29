@@ -8,11 +8,16 @@ import com.erikallas.ndl.ai.sequential.SequentialPromptingService;
 import com.erikallas.ndl.ai.sequential.SequentialPromptingModels;
 import com.erikallas.ndl.ai.mealplan.MealPlanAIService;
 import com.erikallas.ndl.nutrition.recipe.RecipeCatalogModels.RecipeDetail;
+import com.erikallas.ndl.nutrition.recipe.RecipeCatalogQueryRepository;
+import com.erikallas.ndl.nutrition.recipe.RecipeCatalogModels;
 import com.erikallas.ndl.nutrition.mealplan.MealPlanModels;
+import com.erikallas.ndl.nutrition.mealplan.MealPlanMealRepository;
+import com.erikallas.ndl.nutrition.mealplan.MealPlanMealEntity;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.Map;
 import java.util.List;
+import java.util.ArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -48,16 +53,21 @@ public class AIRecipeGenerationController {
     private final RAGRetrieverService ragRetrieverService;
     private final SequentialPromptingService sequentialPromptingService;
     private final MealPlanAIService mealPlanAIService;
+    private final RecipeCatalogQueryRepository recipeCatalogQueryRepository;
+    private final MealPlanMealRepository mealPlanMealRepository;
     private final ObjectMapper objectMapper;
 
     public AIRecipeGenerationController(UserService userService, FunctionCallingHandler functionCallingHandler,
             RAGRetrieverService ragRetrieverService, SequentialPromptingService sequentialPromptingService,
-            MealPlanAIService mealPlanAIService, ObjectMapper objectMapper) {
+            MealPlanAIService mealPlanAIService, RecipeCatalogQueryRepository recipeCatalogQueryRepository,
+            MealPlanMealRepository mealPlanMealRepository, ObjectMapper objectMapper) {
         this.userService = userService;
         this.functionCallingHandler = functionCallingHandler;
         this.ragRetrieverService = ragRetrieverService;
         this.sequentialPromptingService = sequentialPromptingService;
         this.mealPlanAIService = mealPlanAIService;
+        this.recipeCatalogQueryRepository = recipeCatalogQueryRepository;
+        this.mealPlanMealRepository = mealPlanMealRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -190,6 +200,68 @@ public class AIRecipeGenerationController {
         } catch (Exception e) {
             logger.error("Meal plan generation failed for user {}: {}", user.getId(), e.getMessage(), e);
             throw new RuntimeException("Meal plan generation failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * PHASE 4+: Get alternative meal suggestions.
+     * 
+     * Finds alternative recipes for a specific meal by: 1. Getting the current
+     * meal's type and nutrition profile 2. Searching for recipes of the same meal
+     * type 3. Filtering out the current recipe 4. Returning top alternatives sorted
+     * by relevance
+     * 
+     * @param auth   JWT authentication
+     * @param mealId ID of the meal to get alternatives for
+     * @param limit  Maximum number of alternatives to return (default 5, max 20)
+     * @return List of alternative recipes with full details
+     */
+    @GetMapping("/alternatives/{mealId}")
+    public ApiSuccess<List<RecipeDetail>> getAlternativeMeals(JwtAuthenticationToken auth, @PathVariable String mealId,
+            @RequestParam(defaultValue = "5") int limit) {
+
+        var user = userService.ensureUserFromJwt(auth);
+        int topK = Math.min(Math.max(limit, 1), 20); // Clamp between 1 and 20
+
+        try {
+            // Step 1: Get the current meal
+            var mealUuid = java.util.UUID.fromString(mealId);
+            var meal = mealPlanMealRepository.findById(mealUuid)
+                    .orElseThrow(() -> new IllegalArgumentException("Meal not found: " + mealId));
+
+            // Step 2: Search for recipes of the same meal type
+            var filters = new RecipeCatalogModels.RecipeSearchFilters(null, // q - no text query
+                    null, // cuisine - keep open
+                    meal.getMealType(), // meal type
+                    null, // dietaryTag
+                    null, // maxTimeMinutes
+                    null, // maxCaloriesKcal
+                    topK + 1 // Request one extra to account for current recipe
+            );
+
+            var candidates = recipeCatalogQueryRepository.search(filters);
+
+            // Step 3: Filter out the current recipe and get details
+            List<RecipeDetail> alternatives = new ArrayList<>();
+            for (var candidate : candidates) {
+                if (!candidate.id().equals(meal.getRecipeId()) && alternatives.size() < topK) {
+                    try {
+                        var detail = recipeCatalogQueryRepository.getById(candidate.id());
+                        if (detail != null) {
+                            alternatives.add(detail);
+                        }
+                    } catch (Exception e) {
+                        logger.debug("Failed to get recipe details for {}: {}", candidate.id(), e.getMessage());
+                    }
+                }
+            }
+
+            logger.debug("Found {} alternatives for meal {} (type: {})", alternatives.size(), mealId,
+                    meal.getMealType());
+            return ApiSuccess.of(alternatives);
+        } catch (Exception e) {
+            logger.error("Failed to get alternatives for meal {}: {}", mealId, e.getMessage(), e);
+            return ApiSuccess.of(new ArrayList<>()); // Return empty list on error
         }
     }
 

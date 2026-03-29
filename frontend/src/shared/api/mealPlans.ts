@@ -1,6 +1,7 @@
 import { api } from "./client";
 import type { ApiResponse } from "../types";
 import { unwrapApiData } from "./unwrap";
+import type { RecipeDetail } from "./recipes";
 
 export type RecipeIngredient = {
     id: string;
@@ -227,4 +228,22 @@ export function regenerateMeal(mealId: string, token: string): Promise<string | 
             token
         )
         .then((response) => unwrapApiData(response));
+}
+
+/**
+ * Get alternative meal suggestions for a specific meal.
+ * Returns recipes of the same meal type that could replace the current meal.
+ * 
+ * @param mealId Meal ID to get alternatives for
+ * @param limit Maximum number of alternatives to return (default 5)
+ * @param token Auth token
+ */
+export function getAlternativeMeals(mealId: string, limit: number = 5, token: string): Promise<RecipeDetail[]> {
+    return api
+        .get<RecipeDetail[] | ApiResponse<RecipeDetail[]>>(
+            `/api/meal-plans/ai/alternatives/${mealId}?limit=${limit}`,
+            token
+        )
+        .then((response) => unwrapApiData(response))
+        .then((result) => result || []);
 }
