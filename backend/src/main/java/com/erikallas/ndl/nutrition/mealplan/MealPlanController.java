@@ -51,17 +51,17 @@ public class MealPlanController {
         return ApiSuccess.of(result);
     }
 
+    @GetMapping("/api/meal-plans/latest")
+    public ApiSuccess<MealPlanModels.GenerateResponse> getLatest(JwtAuthenticationToken auth) {
+        var user = userService.ensureUserFromJwt(auth);
+        return ApiSuccess.of(mealPlanService.getLatest(user.getId()));
+    }
+
     @GetMapping("/api/meal-plans/{mealPlanId}")
     public ApiSuccess<MealPlanModels.GenerateResponse> getById(@PathVariable("mealPlanId") UUID mealPlanId,
             JwtAuthenticationToken auth) {
         var user = userService.ensureUserFromJwt(auth);
         return ApiSuccess.of(mealPlanService.getById(user.getId(), mealPlanId));
-    }
-
-    @GetMapping("/api/meal-plans/latest")
-    public ApiSuccess<MealPlanModels.GenerateResponse> getLatest(JwtAuthenticationToken auth) {
-        var user = userService.ensureUserFromJwt(auth);
-        return ApiSuccess.of(mealPlanService.getLatest(user.getId()));
     }
 
     /**

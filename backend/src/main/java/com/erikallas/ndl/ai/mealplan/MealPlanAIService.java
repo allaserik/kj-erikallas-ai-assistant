@@ -7,6 +7,8 @@ import com.erikallas.ndl.nutrition.mealplan.MealPlanMealEntity;
 import com.erikallas.ndl.nutrition.mealplan.MealPlanRepository;
 import com.erikallas.ndl.nutrition.mealplan.MealPlanMealRepository;
 import com.erikallas.ndl.nutrition.mealplan.MealPlanModels;
+import com.erikallas.ndl.nutrition.recipe.RecipeCatalogService;
+import com.erikallas.ndl.nutrition.recipe.RecipeCatalogModels;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,8 +21,8 @@ import java.util.stream.Collectors;
 /**
  * AI Meal Plan Service - Phase 4 Persistence Layer
  * 
- * Converts sequential prompting output to saved database entities.
- * Bridges Phase 3 (sequential prompting) to persistent storage.
+ * Converts sequential prompting output to saved database entities. Bridges
+ * Phase 3 (sequential prompting) to persistent storage.
  */
 @Service
 public class MealPlanAIService {
@@ -28,18 +30,19 @@ public class MealPlanAIService {
 
     private final MealPlanRepository mealPlanRepository;
     private final MealPlanMealRepository mealPlanMealRepository;
+    private final RecipeCatalogService recipeCatalogService;
 
-    public MealPlanAIService(
-            MealPlanRepository mealPlanRepository,
-            MealPlanMealRepository mealPlanMealRepository) {
+    public MealPlanAIService(MealPlanRepository mealPlanRepository, MealPlanMealRepository mealPlanMealRepository,
+            RecipeCatalogService recipeCatalogService) {
         this.mealPlanRepository = mealPlanRepository;
         this.mealPlanMealRepository = mealPlanMealRepository;
+        this.recipeCatalogService = recipeCatalogService;
     }
 
     /**
      * Save generated meal plan from sequential prompting to database.
      * 
-     * @param userId User who owns this meal plan
+     * @param userId   User who owns this meal plan
      * @param response Generated meal plan from SequentialPromptingService
      * @return Saved meal plan entity with generated IDs
      */
@@ -60,17 +63,10 @@ public class MealPlanAIService {
                 for (var meal : dayNutrition.meals()) {
                     // Parse day number from "Day N" label
                     LocalDate mealDate = extractDateFromDay(dayNutrition.dayLabel(), response);
-                    
-                    var mealEntity = new MealPlanMealEntity(
-                            UUID.randomUUID(),
-                            mealPlan.getId(),
-                            mealDate,
-                            meal.mealType(),
-                            meal.recipeId(),
-                            positionIndex++,
-                            OffsetDateTime.now(),
-                            OffsetDateTime.now()
-                    );
+
+                    var mealEntity = new MealPlanMealEntity(UUID.randomUUID(), mealPlan.getId(), mealDate,
+                            meal.mealType(), meal.recipeId(), positionIndex++, OffsetDateTime.now(),
+                            OffsetDateTime.now());
                     mealEntities.add(mealEntity);
                 }
             }
@@ -89,34 +85,29 @@ public class MealPlanAIService {
     /**
      * Convert sequential prompting response to MealPlanEntity.
      */
-    private MealPlanEntity createMealPlanEntity(
-            UUID userId,
-            SequentialPromptingModels.MealPlanResponse response) {
-        
+    private MealPlanEntity createMealPlanEntity(UUID userId, SequentialPromptingModels.MealPlanResponse response) {
+
         OffsetDateTime now = OffsetDateTime.now();
         LocalDate startDate = LocalDate.now();
         LocalDate endDate = startDate.plusDays(response.numberOfDays() - 1);
 
-        return new MealPlanEntity(
-                UUID.randomUUID(),                          // id
-                userId,                                      // userId
-                response.numberOfDays() > 7 ? "weekly" : "daily",  // periodType
-                startDate,                                   // startDate
-                endDate,                                     // endDate
-                "GENERATED",                                 // status
-                "AI_GENERATED",                              // source
-                now,                                         // createdAt
-                now                                          // updatedAt
+        return new MealPlanEntity(UUID.randomUUID(), // id
+                userId, // userId
+                response.numberOfDays() > 7 ? "weekly" : "daily", // periodType
+                startDate, // startDate
+                endDate, // endDate
+                "GENERATED", // status
+                "AI_GENERATED", // source
+                now, // createdAt
+                now // updatedAt
         );
     }
 
     /**
      * Extract date from day label (e.g., "Day 1" -> LocalDate.now()).
      */
-    private LocalDate extractDateFromDay(
-            String dayLabel,
-            SequentialPromptingModels.MealPlanResponse response) {
-        
+    private LocalDate extractDateFromDay(String dayLabel, SequentialPromptingModels.MealPlanResponse response) {
+
         try {
             // Extract number from "Day N" format
             String[] parts = dayLabel.split(" ");
@@ -127,60 +118,77 @@ public class MealPlanAIService {
         } catch (Exception e) {
             log.warn("Could not parse day label: {}", dayLabel);
         }
-        
+
         return LocalDate.now();
     }
 
     /**
-     * Build response model for saved meal plan (used by controller).
+     * Build response model for saved meal plan (used by controller). Fetches full
+     * recipe details including ingredients and preparation steps.
      */
-    public MealPlanModels.GenerateResponse buildGenerateResponse(
-            MealPlanEntity savedPlan,
+    public MealPlanModels.GenerateResponse buildGenerateResponse(MealPlanEntity savedPlan,
             SequentialPromptingModels.MealPlanResponse nutritionPlan) {
-        
+
         // Group meals by day
         Map<LocalDate, List<MealPlanModels.MealItemResponse>> mealsByDay = new TreeMap<>();
-        
+
         // Reconstruct meals from original response
         for (var day : nutritionPlan.days()) {
             List<MealPlanModels.MealItemResponse> dayMeals = new ArrayList<>();
-            
+
             for (var meal : day.meals()) {
-                // Calculate estimated time (30 min base + 5 min per serving)
-                int estimatedTime = 30 + (meal.servings() * 5);
-                
-                var mealItem = new MealPlanModels.MealItemResponse(
-                        UUID.randomUUID(),  // mealId (would be from saved entity in real scenario)
-                        meal.mealType(),    // mealType
-                        meal.recipeId(),    // recipeId
-                        meal.recipeTitle(), // recipeTitle
-                        "unspecified",      // cuisine (not available in PlannedMeal)
-                        estimatedTime,      // timeMinutes
-                        BigDecimal.valueOf(meal.caloriesKcal()),  // caloriesKcal
-                        BigDecimal.valueOf(meal.proteinG()),      // proteinG
-                        BigDecimal.valueOf(meal.carbsG()),        // carbsG
-                        BigDecimal.valueOf(meal.fatsG())          // fatsG
-                );
-                dayMeals.add(mealItem);
+                try {
+                    // Fetch full recipe details from catalog
+                    RecipeCatalogModels.RecipeDetail recipeDetail = recipeCatalogService.getById(meal.recipeId());
+
+                    if (recipeDetail != null) {
+                        // Convert ingredients to response format
+                        List<MealPlanModels.IngredientItem> ingredients = recipeDetail.ingredients().stream()
+                                .map(ing -> new MealPlanModels.IngredientItem(ing.id(), ing.label(), ing.unit(),
+                                        ing.quantity(), ing.nutrition().caloriesKcal(), ing.nutrition().proteinG(),
+                                        ing.nutrition().carbsG(), ing.nutrition().fatsG()))
+                                .collect(Collectors.toList());
+
+                        // Convert preparation steps to response format
+                        List<MealPlanModels.PreparationStep> preparation = recipeDetail.preparation().stream()
+                                .map(step -> new MealPlanModels.PreparationStep(step.stepNumber(), step.step(),
+                                        step.description()))
+                                .collect(Collectors.toList());
+
+                        var mealItem = new MealPlanModels.MealItemResponse(UUID.randomUUID(), // mealId
+                                meal.mealType(), // mealType
+                                meal.recipeId(), // recipeId
+                                recipeDetail.title(), // recipeTitle
+                                recipeDetail.cuisine(), // cuisine
+                                recipeDetail.timeMinutes(), // timeMinutes
+                                recipeDetail.difficultyLevel(), // difficultyLevel
+                                recipeDetail.summary(), // summary
+                                recipeDetail.source(), // source
+                                recipeDetail.img(), // img
+                                recipeDetail.nutrition().caloriesKcal(), // caloriesKcal
+                                recipeDetail.nutrition().proteinG(), // proteinG
+                                recipeDetail.nutrition().carbsG(), // carbsG
+                                recipeDetail.nutrition().fatsG(), // fatsG
+                                ingredients, // ingredients
+                                preparation // preparation
+                        );
+                        dayMeals.add(mealItem);
+                    }
+                } catch (Exception e) {
+                    log.warn("Could not fetch recipe details for meal {}: {}", meal.recipeId(), e.getMessage());
+                }
             }
-            
+
             mealsByDay.put(LocalDate.now().plusDays(day.dayLabel().length() - 1), dayMeals);
         }
-        
+
         // Build day responses
         List<MealPlanModels.MealPlanDayResponse> dayResponses = mealsByDay.entrySet().stream()
-            .map(entry -> new MealPlanModels.MealPlanDayResponse(entry.getKey(), entry.getValue()))
-            .collect(Collectors.toList());
-        
-        return new MealPlanModels.GenerateResponse(
-                savedPlan.getId(),
-                savedPlan.getPeriodType(),
-                savedPlan.getStartDate(),
-                savedPlan.getEndDate(),
-                dayResponses.stream()
-                    .mapToInt(d -> d.meals().size())
-                    .sum(),
-                dayResponses
-        );
+                .map(entry -> new MealPlanModels.MealPlanDayResponse(entry.getKey(), entry.getValue()))
+                .collect(Collectors.toList());
+
+        return new MealPlanModels.GenerateResponse(savedPlan.getId(), savedPlan.getPeriodType(),
+                savedPlan.getStartDate(), savedPlan.getEndDate(),
+                dayResponses.stream().mapToInt(d -> d.meals().size()).sum(), dayResponses);
     }
 }

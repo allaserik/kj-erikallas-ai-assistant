@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useAuthToken } from "../../shared/auth/useAuthToken";
-import { getMealPlanById, type GeneratedMealPlan } from "../../shared/api/mealPlans";
+import { getMealPlanById, type GeneratedMealPlan, type MealPlanMealItem } from "../../shared/api/mealPlans";
 
 /**
  * MealPlanDetailPage: Shows a complete generated meal plan
@@ -17,6 +17,7 @@ export default function MealPlanDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedDay, setSelectedDay] = useState(0);
+    const [selectedMeal, setSelectedMeal] = useState<MealPlanMealItem | null>(null);
 
     const isNewlyGenerated = (location.state as any)?.newlyGenerated ?? false;
 
@@ -139,7 +140,8 @@ export default function MealPlanDetailPage() {
                 {currentDay.meals.map((meal, idx) => (
                     <div
                         key={idx}
-                        className="bg-white border border-slate-200 rounded-lg p-6 hover:shadow-md transition"
+                        onClick={() => setSelectedMeal(meal)}
+                        className="bg-white border border-slate-200 rounded-lg p-6 hover:shadow-md hover:border-green-300 cursor-pointer transition"
                     >
                         <div className="flex items-start justify-between mb-4">
                             <div>
@@ -148,6 +150,9 @@ export default function MealPlanDetailPage() {
                                 </p>
                                 <h3 className="text-lg font-semibold text-slate-900">{meal.recipeTitle}</h3>
                             </div>
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                                Click to view
+                            </span>
                         </div>
 
                         {/* Cuisine */}
@@ -203,6 +208,168 @@ export default function MealPlanDetailPage() {
                     <li>✓ Save favorite meal combinations</li>
                 </ul>
             </div>
+
+            {/* Recipe Detail Modal */}
+            {selectedMeal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-white border-b p-6 flex justify-between items-start">
+                            <div>
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                                    {selectedMeal.mealType}
+                                </p>
+                                <h2 className="text-2xl font-bold text-slate-900">{selectedMeal.recipeTitle}</h2>
+                            </div>
+                            <button
+                                onClick={() => setSelectedMeal(null)}
+                                className="text-slate-400 hover:text-slate-600 text-2xl"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            {/* Recipe Image */}
+                            {selectedMeal.img && (
+                                <div className="w-full h-48 bg-slate-200 rounded-lg overflow-hidden">
+                                    <img
+                                        src={selectedMeal.img}
+                                        alt={selectedMeal.recipeTitle}
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                            )}
+
+                            {/* Summary */}
+                            {selectedMeal.summary && (
+                                <div>
+                                    <h3 className="font-semibold text-slate-900 mb-2">About This Recipe</h3>
+                                    <p className="text-slate-700">{selectedMeal.summary}</p>
+                                </div>
+                            )}
+
+                            {/* Recipe Metadata */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                {selectedMeal.timeMinutes && (
+                                    <div className="bg-slate-50 rounded p-3">
+                                        <p className="text-xs text-slate-600 mb-1">Time</p>
+                                        <p className="font-semibold">{selectedMeal.timeMinutes} min</p>
+                                    </div>
+                                )}
+                                {selectedMeal.difficultyLevel && (
+                                    <div className="bg-slate-50 rounded p-3">
+                                        <p className="text-xs text-slate-600 mb-1">Difficulty</p>
+                                        <p className="font-semibold capitalize">{selectedMeal.difficultyLevel}</p>
+                                    </div>
+                                )}
+                                {selectedMeal.cuisine && (
+                                    <div className="bg-slate-50 rounded p-3">
+                                        <p className="text-xs text-slate-600 mb-1">Cuisine</p>
+                                        <p className="font-semibold">{selectedMeal.cuisine}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Nutrition */}
+                            <div>
+                                <h3 className="font-semibold text-slate-900 mb-3">Nutritional Information (per serving)</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div className="bg-blue-50 rounded p-3">
+                                        <p className="text-xs text-slate-600 mb-1">Calories</p>
+                                        <p className="font-semibold">
+                                            {selectedMeal.caloriesKcal ? Math.round(selectedMeal.caloriesKcal) : "—"} kcal
+                                        </p>
+                                    </div>
+                                    <div className="bg-red-50 rounded p-3">
+                                        <p className="text-xs text-slate-600 mb-1">Protein</p>
+                                        <p className="font-semibold">
+                                            {selectedMeal.proteinG ? Math.round(selectedMeal.proteinG) : "—"}g
+                                        </p>
+                                    </div>
+                                    <div className="bg-yellow-50 rounded p-3">
+                                        <p className="text-xs text-slate-600 mb-1">Carbs</p>
+                                        <p className="font-semibold">
+                                            {selectedMeal.carbsG ? Math.round(selectedMeal.carbsG) : "—"}g
+                                        </p>
+                                    </div>
+                                    <div className="bg-orange-50 rounded p-3">
+                                        <p className="text-xs text-slate-600 mb-1">Fat</p>
+                                        <p className="font-semibold">
+                                            {selectedMeal.fatsG ? Math.round(selectedMeal.fatsG) : "—"}g
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Ingredients */}
+                            {selectedMeal.ingredients && selectedMeal.ingredients.length > 0 && (
+                                <div>
+                                    <h3 className="font-semibold text-slate-900 mb-3">Ingredients</h3>
+                                    <ul className="space-y-2">
+                                        {selectedMeal.ingredients.map((ing, idx) => (
+                                            <li key={idx} className="flex justify-between text-slate-700">
+                                                <span>{ing.label}</span>
+                                                <span className="font-medium text-slate-600">
+                                                    {ing.quantity} {ing.unit}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {/* Preparation Steps */}
+                            {selectedMeal.preparation && selectedMeal.preparation.length > 0 && (
+                                <div>
+                                    <h3 className="font-semibold text-slate-900 mb-3">Recipe Instructions</h3>
+                                    <div className="space-y-3">
+                                        {selectedMeal.preparation.map((step, idx) => (
+                                            <div key={idx} className="flex gap-3">
+                                                <div className="flex-shrink-0">
+                                                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-green-100 text-green-700 font-semibold text-sm">
+                                                        {step.stepNumber}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-slate-900">{step.step}</p>
+                                                    {step.description && (
+                                                        <p className="text-slate-600 text-sm mt-1">{step.description}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Source */}
+                            {selectedMeal.source && (
+                                <div className="pt-3 border-t">
+                                    <p className="text-xs text-slate-600">
+                                        Source: <span className="font-medium">{selectedMeal.source}</span>
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="pt-4 border-t flex gap-3">
+                                <button
+                                    onClick={() => setSelectedMeal(null)}
+                                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-900 font-medium py-2 px-4 rounded-lg transition"
+                                >
+                                    Close
+                                </button>
+                                <button
+                                    disabled
+                                    className="flex-1 bg-blue-100 text-blue-600 font-medium py-2 px-4 rounded-lg opacity-50 cursor-not-allowed"
+                                >
+                                    Swap Recipe (Coming Soon)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

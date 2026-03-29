@@ -2,17 +2,40 @@ import { api } from "./client";
 import type { ApiResponse } from "../types";
 import { unwrapApiData } from "./unwrap";
 
-export type MealPlanMealItem = {
+export type RecipeIngredient = {
     id: string;
-    mealType: string;
-    recipeId: string | null;
-    recipeTitle: string;
-    cuisine: string | null;
-    timeMinutes: number | null;
+    label: string;
+    unit: string;
+    quantity: number;
     caloriesKcal: number | null;
     proteinG: number | null;
     carbsG: number | null;
     fatsG: number | null;
+};
+
+export type RecipeStep = {
+    stepNumber: number;
+    step: string;
+    description: string;
+};
+
+export type MealPlanMealItem = {
+    id: string;
+    mealType: string;
+    recipeId: string;
+    recipeTitle: string;
+    cuisine: string | null;
+    timeMinutes: number | null;
+    difficultyLevel: string | null;
+    summary: string | null;
+    source: string | null;
+    img: string | null;
+    caloriesKcal: number | null;
+    proteinG: number | null;
+    carbsG: number | null;
+    fatsG: number | null;
+    ingredients: RecipeIngredient[];
+    preparation: RecipeStep[];
 };
 
 export type MealPlanDay = {
