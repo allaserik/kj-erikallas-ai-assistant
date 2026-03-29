@@ -68,7 +68,7 @@ function LoggedInContent() {
     <Routes>
       <Route path="/" element={<AppShell />}>
         <Route index element={<DashboardPage />} />
-        
+
         {/* Nutrition Domain */}
         <Route path="nutrition" element={<NutritionPage />}>
           <Route index element={<MealPlansHubPage />} />

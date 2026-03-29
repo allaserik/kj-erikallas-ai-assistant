@@ -196,8 +196,8 @@ export function MealLogCheckin({ reloadKey, onReload }: MealLogCheckinProps) {
                             setMealValidationErrors({});
                         }}
                         className={`px-4 py-2 rounded-lg font-medium transition ${mealMode === "recipe"
-                                ? "bg-green-600 text-white"
-                                : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                            ? "bg-green-600 text-white"
+                            : "bg-slate-200 text-slate-700 hover:bg-slate-300"
                             }`}
                         disabled={isMealSubmitting}
                     >
@@ -209,8 +209,8 @@ export function MealLogCheckin({ reloadKey, onReload }: MealLogCheckinProps) {
                             setMealValidationErrors({});
                         }}
                         className={`px-4 py-2 rounded-lg font-medium transition ${mealMode === "custom"
-                                ? "bg-green-600 text-white"
-                                : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                            ? "bg-green-600 text-white"
+                            : "bg-slate-200 text-slate-700 hover:bg-slate-300"
                             }`}
                         disabled={isMealSubmitting}
                     >

@@ -135,8 +135,8 @@ export function ShoppingList({ mealIds, dateRange }: ShoppingListProps) {
                                             <div
                                                 key={item.id}
                                                 className={`flex items-center gap-3 p-3 rounded-lg border ${item.excluded
-                                                        ? "bg-slate-50 border-slate-200 opacity-50"
-                                                        : "bg-white border-slate-200 hover:bg-slate-50"
+                                                    ? "bg-slate-50 border-slate-200 opacity-50"
+                                                    : "bg-white border-slate-200 hover:bg-slate-50"
                                                     }`}
                                             >
                                                 {/* Checkbox */}
@@ -150,8 +150,8 @@ export function ShoppingList({ mealIds, dateRange }: ShoppingListProps) {
                                                 {/* Item label */}
                                                 <div className="flex-1">
                                                     <p className={`font-medium ${item.excluded
-                                                            ? "text-slate-500 line-through"
-                                                            : "text-slate-900"
+                                                        ? "text-slate-500 line-through"
+                                                        : "text-slate-900"
                                                         }`}>
                                                         {item.label}
                                                     </p>

@@ -25,7 +25,7 @@ export default function BottomNav() {
                     <HomeIcon className="h-6 w-6" />
                     <span>Home</span>
                 </NavLink>
-                
+
                 {/* Nutrition */}
                 <NavLink
                     to="/nutrition"
@@ -37,7 +37,7 @@ export default function BottomNav() {
                     <SparklesIcon className="h-6 w-6" />
                     <span>Nutrition</span>
                 </NavLink>
-                
+
                 {/* Training */}
                 <NavLink
                     to="/training"
@@ -49,7 +49,7 @@ export default function BottomNav() {
                     <FireIcon className="h-6 w-6" />
                     <span>Training</span>
                 </NavLink>
-                
+
                 {/* Insights */}
                 <NavLink
                     to="/insights"
@@ -61,7 +61,7 @@ export default function BottomNav() {
                     <ChartBarIcon className="h-6 w-6" />
                     <span>Insights</span>
                 </NavLink>
-                
+
                 {/* Profile */}
                 <NavLink
                     to="/profile"

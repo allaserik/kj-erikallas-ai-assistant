@@ -140,8 +140,8 @@ export function NutritionTrendChart({ daysToShow = 14 }: NutritionTrendChartProp
                 <button
                     onClick={() => setTrendMode("daily")}
                     className={`px-4 py-2 rounded-lg font-medium transition ${trendMode === "daily"
-                            ? "bg-green-600 text-white"
-                            : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                        ? "bg-green-600 text-white"
+                        : "bg-slate-200 text-slate-700 hover:bg-slate-300"
                         }`}
                     disabled={isLoading}
                 >
@@ -150,8 +150,8 @@ export function NutritionTrendChart({ daysToShow = 14 }: NutritionTrendChartProp
                 <button
                     onClick={() => setTrendMode("weekly")}
                     className={`px-4 py-2 rounded-lg font-medium transition ${trendMode === "weekly"
-                            ? "bg-green-600 text-white"
-                            : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                        ? "bg-green-600 text-white"
+                        : "bg-slate-200 text-slate-700 hover:bg-slate-300"
                         }`}
                     disabled={isLoading}
                 >
@@ -160,8 +160,8 @@ export function NutritionTrendChart({ daysToShow = 14 }: NutritionTrendChartProp
                 <button
                     onClick={() => setTrendMode("monthly")}
                     className={`px-4 py-2 rounded-lg font-medium transition ${trendMode === "monthly"
-                            ? "bg-green-600 text-white"
-                            : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                        ? "bg-green-600 text-white"
+                        : "bg-slate-200 text-slate-700 hover:bg-slate-300"
                         }`}
                     disabled={isLoading}
                 >
