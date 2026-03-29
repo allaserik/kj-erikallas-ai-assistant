@@ -10,7 +10,6 @@ import { TextField } from "../../../shared/ui/TextField";
 import { Alert } from "../../../shared/ui/Alert";
 import { ApiError } from "../../../shared/api/client";
 import { Spinner } from "../../../shared/ui/Spinner";
-import { MealLogCheckin } from "../components/MealLogCheckin";
 
 type WeightValidationErrors = {
     weight?: string;
@@ -334,8 +333,6 @@ export default function CheckInPage() {
                     </form>
                 </CardBody>
             </Card>
-
-            <MealLogCheckin reloadKey={reloadKey} onReload={() => setReloadKey((v) => v + 1)} />
 
             <Card>
                 <CardTitle>Recent Timeline</CardTitle>

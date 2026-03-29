@@ -18,6 +18,7 @@ import { MealManagementPage } from './features/nutrition/pages/MealManagementPag
 import MealPlansHubPage from './features/nutrition/pages/MealPlansHubPage';
 import SimpleMealGeneratorPage from './features/nutrition/pages/SimpleMealGeneratorPage';
 import MealPlanDetailPage from './features/nutrition/pages/MealPlanDetailPage';
+import NutritionIntakeLoggingPage from './features/nutrition/pages/NutritionIntakeLoggingPage';
 
 // Training domain
 import TrainingPage from './features/training/TrainingPage';
@@ -80,6 +81,7 @@ function LoggedInContent() {
           <Route path="generate" element={<SimpleMealGeneratorPage />} />
           <Route path="ai-generate" element={<AIGeneratedMealPlansPage />} />
           <Route path="manage" element={<MealManagementPage />} />
+          <Route path="intake" element={<NutritionIntakeLoggingPage />} />
         </Route>
 
         {/* Training Domain */}

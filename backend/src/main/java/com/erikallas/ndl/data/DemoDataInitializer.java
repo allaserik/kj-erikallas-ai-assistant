@@ -34,17 +34,24 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 /**
  * Initializes demo data for testing and visualization. Activated when
  * demo.mode=true
+ * 
+ * Runs after recipe import (Order=2) to ensure recipes are available for meal
+ * logging.
  */
 @Component
+@Order(2)
 @ConditionalOnProperty(name = "demo.mode", havingValue = "true")
-public class DemoDataInitializer {
+public class DemoDataInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DemoDataInitializer.class);
     private static final String DEMO_EMAIL = "demo@example.com";
@@ -81,10 +88,15 @@ public class DemoDataInitializer {
         this.recipeQueryRepo = recipeQueryRepo;
         this.mealIntakeLogService = mealIntakeLogService;
         this.passwordEncoder = passwordEncoder;
+    }
+
+    @Override
+    @Transactional
+    public void run(ApplicationArguments args) throws Exception {
+        log.info("DemoDataInitializer ApplicationRunner triggered");
         initializeDemo();
     }
 
-    @Transactional
     private void initializeDemo() {
         try {
             // Check if demo user already exists
@@ -309,7 +321,7 @@ public class DemoDataInitializer {
         LocalDate endDate = startDate.plus(numDays - 1, ChronoUnit.DAYS);
         OffsetDateTime createdAt = OffsetDateTime.of(startDate.atStartOfDay(), ZoneOffset.of("+02:00"));
 
-        MealPlanEntity plan = new MealPlanEntity(UUID.randomUUID(), userId, "WEEKLY", startDate, endDate, "ACTIVE",
+        MealPlanEntity plan = new MealPlanEntity(UUID.randomUUID(), userId, "weekly", startDate, endDate, "ACTIVE",
                 "DEMO", createdAt, now);
         MealPlanEntity savedPlan = mealPlanRepo.save(plan);
 
@@ -334,44 +346,107 @@ public class DemoDataInitializer {
     private void createMealLogs(UUID userId, OffsetDateTime now) {
         // Get available recipes from catalog for variation
         List<RecipeCatalogModels.RecipeListItem> recipes = recipeQueryRepo
-                .search(new RecipeCatalogModels.RecipeSearchFilters(null, null, null, null, null, null, 50));
+                .search(new RecipeCatalogModels.RecipeSearchFilters(null, null, null, null, null, null, 100));
 
         if (recipes.isEmpty()) {
             log.warn("No recipes available, skipping meal logs");
             return;
         }
 
-        // Log meals for last 3 days (today, yesterday, 2 days ago) to show consumption
-        // history
         LocalDate today = LocalDate.now();
-        LocalTime[] mealTimes = { LocalTime.of(8, 15), LocalTime.of(12, 30), LocalTime.of(19, 0) };
-        String[] mealTypes = { "BREAKFAST", "LUNCH", "DINNER" };
-        BigDecimal[] servingsVariations = { BigDecimal.ONE, new BigDecimal("1.2"), new BigDecimal("0.9") };
 
-        for (int daysAgo = 2; daysAgo >= 0; daysAgo--) {
+        // Pre-define meal times and types
+        Map<String, LocalTime> mealTimesMap = Map.of("BREAKFAST", LocalTime.of(7, 30), "LUNCH", LocalTime.of(12, 30),
+                "SNACK", LocalTime.of(15, 0), "DINNER", LocalTime.of(19, 0));
+
+        // Create 30 days of meal logs with realistic patterns
+        for (int daysAgo = 29; daysAgo >= 0; daysAgo--) {
             LocalDate mealDate = today.minusDays(daysAgo);
+            int dayOfWeek = mealDate.getDayOfWeek().getValue(); // 1=Monday, 7=Sunday
+            boolean isWeekend = dayOfWeek >= 6;
 
-            // Log 3 meals for this day with varied recipes and servings
-            for (int mealIdx = 0; mealIdx < mealTypes.length; mealIdx++) {
-                // Pick varied recipes and servings
-                RecipeCatalogModels.RecipeListItem recipe = recipes.get((daysAgo * 3 + mealIdx) % recipes.size());
-                BigDecimal servings = servingsVariations[(daysAgo + mealIdx) % servingsVariations.length];
+            // Weekday patterns: more consistent, weekends more varied
+            // Some days skip breakfast, some add snacks
+            boolean skipBreakfast = (daysAgo % 5 == 0); // Skip breakfast every 5 days
+            boolean addSnack = (daysAgo % 3 == 1 || isWeekend); // Add snack occasionally and on weekends
 
-                // Create OffsetDateTime for the meal
-                OffsetDateTime mealDateTime = OffsetDateTime.of(mealDate.atTime(mealTimes[mealIdx]),
-                        ZoneOffset.of("+02:00"));
+            // Log breakfast (unless skipped)
+            if (!skipBreakfast) {
+                logMealVariation(userId, mealDate, "BREAKFAST", mealTimesMap, recipes, daysAgo);
+            }
 
-                try {
-                    mealIntakeLogService.logMealFromRecipe(userId, recipe.id(), servings, mealTypes[mealIdx],
-                            mealTimes[mealIdx], mealDateTime);
-                    log.debug("Logged {} for date {} with {x servings", mealTypes[mealIdx], mealDate, servings);
-                } catch (Exception e) {
-                    log.warn("Failed to log meal for date {} meal type {}: {}", mealDate, mealTypes[mealIdx],
-                            e.getMessage());
+            // Log lunch
+            logMealVariation(userId, mealDate, "LUNCH", mealTimesMap, recipes, daysAgo + 1);
+
+            // Log snack (if applicable)
+            if (addSnack) {
+                // Mix in some custom snacks for variety
+                if (daysAgo % 4 == 0) {
+                    logCustomSnack(userId, mealDate, mealTimesMap.get("SNACK"));
+                } else {
+                    logMealVariation(userId, mealDate, "SNACK", mealTimesMap, recipes, daysAgo + 2);
                 }
             }
+
+            // Log dinner
+            logMealVariation(userId, mealDate, "DINNER", mealTimesMap, recipes, daysAgo + 3);
         }
 
-        log.debug("Meal intake logs created for last 3 days");
+        log.info("Meal intake logs created for 30 days with varied patterns");
+    }
+
+    private void logMealVariation(UUID userId, LocalDate mealDate, String mealType, Map<String, LocalTime> mealTimesMap,
+            List<RecipeCatalogModels.RecipeListItem> recipes, int dayVariant) {
+        try {
+            // Vary recipes based on day
+            RecipeCatalogModels.RecipeListItem recipe = recipes.get(dayVariant % recipes.size());
+
+            // Vary servings: 80% of 1, 50% of 1.2, 30% of 0.8, 20% of 1.5
+            BigDecimal servings;
+            int variation = dayVariant % 10;
+            if (variation < 5) {
+                servings = BigDecimal.ONE;
+            } else if (variation < 7) {
+                servings = new BigDecimal("1.2");
+            } else if (variation < 9) {
+                servings = new BigDecimal("0.8");
+            } else {
+                servings = new BigDecimal("1.5");
+            }
+
+            LocalTime mealTime = mealTimesMap.get(mealType);
+            OffsetDateTime mealDateTime = OffsetDateTime.of(mealDate.atTime(mealTime), ZoneOffset.of("+02:00"));
+
+            mealIntakeLogService.logMealFromRecipe(userId, recipe.id(), servings, mealType, mealTime, mealDateTime);
+            log.debug("Logged {} ({} servings) for {}", mealType, servings, mealDate);
+        } catch (Exception e) {
+            log.warn("Failed to log meal {} for date {}: {}", mealType, mealDate, e.getMessage());
+        }
+    }
+
+    private void logCustomSnack(UUID userId, LocalDate mealDate, LocalTime snackTime) {
+        try {
+            // Define realistic snack options
+            String[] snacks = { "Greek yogurt with berries", "Protein bar", "Apple with almond butter", "Mixed nuts",
+                    "Energy drink", "Granola bar", "Banana", "Cheese and crackers" };
+
+            double[] caloriesKcal = { 180, 200, 220, 190, 150, 160, 105, 200 };
+            double[] proteins = { 15, 20, 8, 6, 2, 5, 1, 8 };
+            double[] carbs = { 20, 22, 25, 8, 35, 22, 27, 18 };
+            double[] fats = { 5, 8, 10, 16, 0, 6, 0, 10 };
+
+            int snackIdx = Math.random() < 0.5 ? 0 : (int) (Math.random() * snacks.length);
+
+            OffsetDateTime snackDateTime = OffsetDateTime.of(mealDate.atTime(snackTime), ZoneOffset.of("+02:00"));
+
+            mealIntakeLogService.logCustomMeal(userId, snacks[snackIdx], "SNACK",
+                    BigDecimal.valueOf(caloriesKcal[snackIdx]), BigDecimal.valueOf(proteins[snackIdx]),
+                    BigDecimal.valueOf(carbs[snackIdx]), BigDecimal.valueOf(fats[snackIdx]), "Demo snack", snackTime,
+                    snackDateTime);
+
+            log.debug("Logged custom snack: {}", snacks[snackIdx]);
+        } catch (Exception e) {
+            log.warn("Failed to log custom snack for date {}: {}", mealDate, e.getMessage());
+        }
     }
 }

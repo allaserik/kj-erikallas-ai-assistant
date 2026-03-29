@@ -24,12 +24,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
+@Order(1)
 @ConditionalOnProperty(prefix = "nutrition.raw-import", name = "enabled", havingValue = "true")
 public class RawRecipeImportInitializer implements ApplicationRunner {
 
@@ -40,8 +42,7 @@ public class RawRecipeImportInitializer implements ApplicationRunner {
     private final NamedParameterJdbcTemplate jdbc;
     private final int limit;
 
-    public RawRecipeImportInitializer(
-            NamedParameterJdbcTemplate jdbc,
+    public RawRecipeImportInitializer(NamedParameterJdbcTemplate jdbc,
             @Value("${nutrition.raw-import.limit:500}") int limit) {
         this.jdbc = jdbc;
         this.limit = Math.max(1, limit);
@@ -49,10 +50,8 @@ public class RawRecipeImportInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        Integer existing = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM recipes WHERE source = :source",
-                Map.of("source", SOURCE),
-                Integer.class);
+        Integer existing = jdbc.queryForObject("SELECT COUNT(*) FROM recipes WHERE source = :source",
+                Map.of("source", SOURCE), Integer.class);
         if (existing != null && existing >= limit) {
             log.info("Raw recipe import skipped: source={} already has {} recipes (limit={})", SOURCE, existing, limit);
             return;
@@ -66,13 +65,8 @@ public class RawRecipeImportInitializer implements ApplicationRunner {
         ClassPathResource rawRecipesResource = new ClassPathResource("recipe-csv/RAW_recipes.csv");
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(rawRecipesResource.getInputStream(), StandardCharsets.UTF_8));
-                CSVParser parser = CSVFormat.DEFAULT.builder()
-                        .setHeader()
-                        .setSkipHeaderRecord(true)
-                        .setIgnoreEmptyLines(true)
-                        .setTrim(true)
-                        .build()
-                        .parse(reader)) {
+                CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true)
+                        .setIgnoreEmptyLines(true).setTrim(true).build().parse(reader)) {
             for (CSVRecord row : parser) {
                 if (imported >= limit) {
                     break;
@@ -118,24 +112,14 @@ public class RawRecipeImportInitializer implements ApplicationRunner {
                 BigDecimal rawCalories = parseFirstNutritionValue(row.get("nutrition"));
                 BigDecimal recipeCalories = nutritionAcc.calories.compareTo(BigDecimal.ZERO) > 0 ? nutritionAcc.calories
                         : rawCalories;
-                BigDecimal recipeProtein = nutritionAcc.protein.compareTo(BigDecimal.ZERO) > 0 ? nutritionAcc.protein : null;
+                BigDecimal recipeProtein = nutritionAcc.protein.compareTo(BigDecimal.ZERO) > 0 ? nutritionAcc.protein
+                        : null;
                 BigDecimal recipeCarbs = nutritionAcc.carbs.compareTo(BigDecimal.ZERO) > 0 ? nutritionAcc.carbs : null;
                 BigDecimal recipeFats = nutritionAcc.fats.compareTo(BigDecimal.ZERO) > 0 ? nutritionAcc.fats : null;
 
-                UUID recipeId = upsertRecipe(
-                        externalId,
-                        title,
-                        guessCuisine(tags),
-                        guessMeal(tags),
-                        1,
-                        safe(row.get("description")),
-                        minutes != null ? minutes : 30,
-                        guessDifficulty(tags),
-                        toTagArray(tags),
-                        recipeCalories,
-                        recipeProtein,
-                        recipeCarbs,
-                        recipeFats);
+                UUID recipeId = upsertRecipe(externalId, title, guessCuisine(tags), guessMeal(tags), 1,
+                        safe(row.get("description")), minutes != null ? minutes : 30, guessDifficulty(tags),
+                        toTagArray(tags), recipeCalories, recipeProtein, recipeCarbs, recipeFats);
 
                 replaceRecipeIngredients(recipeId, ingredientItems);
                 replaceRecipeSteps(recipeId, steps);
@@ -153,58 +137,32 @@ public class RawRecipeImportInitializer implements ApplicationRunner {
         ClassPathResource nutritionResource = new ClassPathResource("recipe-csv/cleaned_nutrition_dataset_per100g.csv");
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(nutritionResource.getInputStream(), StandardCharsets.UTF_8));
-                CSVParser parser = CSVFormat.DEFAULT.builder()
-                        .setHeader()
-                        .setSkipHeaderRecord(true)
-                        .setIgnoreEmptyLines(true)
-                        .setTrim(true)
-                        .build()
-                        .parse(reader)) {
+                CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true)
+                        .setIgnoreEmptyLines(true).setTrim(true).build().parse(reader)) {
             for (CSVRecord row : parser) {
                 String key = normalizeIngredientName(safe(row.get("food_normalized")));
                 if (key.isBlank()) {
                     continue;
                 }
-                map.put(key, new NutritionPer100g(
-                        parseDecimal(row.get("Calories (kcal per 100g)")),
-                        parseDecimal(row.get("Protein (g per 100g)")),
-                        parseDecimal(row.get("Carbohydrates (g per 100g)")),
-                        parseDecimal(row.get("Fat (g per 100g)"))));
+                map.put(key,
+                        new NutritionPer100g(parseDecimal(row.get("Calories (kcal per 100g)")),
+                                parseDecimal(row.get("Protein (g per 100g)")),
+                                parseDecimal(row.get("Carbohydrates (g per 100g)")),
+                                parseDecimal(row.get("Fat (g per 100g)"))));
             }
         }
         return map;
     }
 
-    private UUID upsertRecipe(
-            String externalId,
-            String title,
-            String cuisine,
-            String meal,
-            int servings,
-            String summary,
-            int timeMinutes,
-            String difficultyLevel,
-            String[] tags,
-            BigDecimal caloriesKcal,
-            BigDecimal proteinG,
-            BigDecimal carbsG,
-            BigDecimal fatsG) {
-        MapSqlParameterSource params = new MapSqlParameterSource()
-                .addValue("externalId", externalId)
-                .addValue("title", title)
-                .addValue("cuisine", cuisine)
-                .addValue("meal", meal)
-                .addValue("servings", servings)
-                .addValue("summary", summary)
-                .addValue("timeMinutes", timeMinutes)
-                .addValue("difficultyLevel", difficultyLevel)
-                .addValue("dietaryTags", tags)
-                .addValue("source", SOURCE)
-                .addValue("img", null)
-                .addValue("caloriesKcal", caloriesKcal)
-                .addValue("proteinG", proteinG)
-                .addValue("carbsG", carbsG)
-                .addValue("fatsG", fatsG);
+    private UUID upsertRecipe(String externalId, String title, String cuisine, String meal, int servings,
+            String summary, int timeMinutes, String difficultyLevel, String[] tags, BigDecimal caloriesKcal,
+            BigDecimal proteinG, BigDecimal carbsG, BigDecimal fatsG) {
+        MapSqlParameterSource params = new MapSqlParameterSource().addValue("externalId", externalId)
+                .addValue("title", title).addValue("cuisine", cuisine).addValue("meal", meal)
+                .addValue("servings", servings).addValue("summary", summary).addValue("timeMinutes", timeMinutes)
+                .addValue("difficultyLevel", difficultyLevel).addValue("dietaryTags", tags).addValue("source", SOURCE)
+                .addValue("img", null).addValue("caloriesKcal", caloriesKcal).addValue("proteinG", proteinG)
+                .addValue("carbsG", carbsG).addValue("fatsG", fatsG);
 
         UUID existingId = jdbc.query("""
                 SELECT id
@@ -265,13 +223,11 @@ public class RawRecipeImportInitializer implements ApplicationRunner {
                     ) VALUES (
                         gen_random_uuid(), :recipeId, :ingredientId, :ingredientName, :quantity, :unit, :sortOrder
                     )
-                    """, new MapSqlParameterSource()
-                    .addValue("recipeId", recipeId)
-                    .addValue("ingredientId", item.ingredientId())
-                    .addValue("ingredientName", item.label())
-                    .addValue("quantity", BigDecimal.valueOf(100))
-                    .addValue("unit", "g")
-                    .addValue("sortOrder", item.sortOrder()));
+                    """,
+                    new MapSqlParameterSource().addValue("recipeId", recipeId)
+                            .addValue("ingredientId", item.ingredientId()).addValue("ingredientName", item.label())
+                            .addValue("quantity", BigDecimal.valueOf(100)).addValue("unit", "g")
+                            .addValue("sortOrder", item.sortOrder()));
         }
     }
 
@@ -289,12 +245,10 @@ public class RawRecipeImportInitializer implements ApplicationRunner {
                     ) VALUES (
                         gen_random_uuid(), :recipeId, :stepNumber, :stepName, :description, :ingredientRefs
                     )
-                    """, new MapSqlParameterSource()
-                    .addValue("recipeId", recipeId)
-                    .addValue("stepNumber", stepNumber)
-                    .addValue("stepName", "Step " + stepNumber)
-                    .addValue("description", description)
-                    .addValue("ingredientRefs", new String[0]));
+                    """,
+                    new MapSqlParameterSource().addValue("recipeId", recipeId).addValue("stepNumber", stepNumber)
+                            .addValue("stepName", "Step " + stepNumber).addValue("description", description)
+                            .addValue("ingredientRefs", new String[0]));
             stepNumber++;
         }
     }
@@ -324,10 +278,9 @@ public class RawRecipeImportInitializer implements ApplicationRunner {
                 INSERT INTO ingredients (id, name, category, default_unit)
                 VALUES (gen_random_uuid(), :name, :category, :unit)
                 RETURNING id
-                """, new MapSqlParameterSource()
-                .addValue("name", key)
-                .addValue("category", "other")
-                .addValue("unit", "g"), UUID.class);
+                """,
+                new MapSqlParameterSource().addValue("name", key).addValue("category", "other").addValue("unit", "g"),
+                UUID.class);
         if (created == null) {
             throw new IllegalStateException("Failed to create ingredient: " + key);
         }
@@ -348,14 +301,11 @@ public class RawRecipeImportInitializer implements ApplicationRunner {
                     protein_g = EXCLUDED.protein_g,
                     fats_g = EXCLUDED.fats_g,
                     updated_at = CURRENT_TIMESTAMP
-                """, new MapSqlParameterSource()
-                .addValue("ingredientId", ingredientId)
-                .addValue("baseQuantity", BigDecimal.valueOf(100))
-                .addValue("baseUnit", "g")
-                .addValue("calories", n.caloriesKcal())
-                .addValue("carbs", n.carbsG())
-                .addValue("protein", n.proteinG())
-                .addValue("fats", n.fatsG()));
+                """,
+                new MapSqlParameterSource().addValue("ingredientId", ingredientId)
+                        .addValue("baseQuantity", BigDecimal.valueOf(100)).addValue("baseUnit", "g")
+                        .addValue("calories", n.caloriesKcal()).addValue("carbs", n.carbsG())
+                        .addValue("protein", n.proteinG()).addValue("fats", n.fatsG()));
     }
 
     private NutritionPer100g matchNutrition(String ingredientLabel, Map<String, NutritionPer100g> nutritionByFood) {
@@ -528,11 +478,7 @@ public class RawRecipeImportInitializer implements ApplicationRunner {
         return value;
     }
 
-    private record NutritionPer100g(
-            BigDecimal caloriesKcal,
-            BigDecimal proteinG,
-            BigDecimal carbsG,
-            BigDecimal fatsG) {
+    private record NutritionPer100g(BigDecimal caloriesKcal, BigDecimal proteinG, BigDecimal carbsG, BigDecimal fatsG) {
     }
 
     private record IngredientImportItem(UUID ingredientId, String label, int sortOrder) {
