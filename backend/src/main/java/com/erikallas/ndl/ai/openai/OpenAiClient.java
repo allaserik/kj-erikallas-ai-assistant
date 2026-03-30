@@ -89,4 +89,96 @@ public class OpenAiClient {
 
         throw new IllegalStateException("OpenAI response missing valid content in choices");
     }
+
+    /**
+     * Generate response with function calling enabled. AI can request function
+     * execution and will receive results in conversation.
+     * 
+     * @param systemPrompt        System role instruction
+     * @param messagesJson        Serialized message history (supports turn-based
+     *                            conversation)
+     * @param functionDefinitions JSON string of function definitions
+     * @return Raw response including any tool_calls requests
+     */
+    public String generateWithFunctionCalling(String systemPrompt, String messagesJson, String functionDefinitions) {
+        String key = env.getProperty("OPENAI_API_KEY");
+        if (key == null || key.isBlank()) {
+            throw new IllegalStateException("OPENAI_API_KEY is not set");
+        }
+
+        try {
+            // Parse message history
+            java.util.List<Map<String, Object>> messages = new java.util.ArrayList<>();
+            messages.add(Map.of("role", "system", "content", systemPrompt));
+
+            if (messagesJson != null && !messagesJson.isBlank()) {
+                JsonNode existingMessages = om.readTree(messagesJson);
+                if (existingMessages.isArray()) {
+                    for (JsonNode msg : existingMessages) {
+                        messages.add(om.convertValue(msg, Map.class));
+                    }
+                }
+            }
+
+            // Parse function definitions
+            JsonNode functions = om.readTree(functionDefinitions);
+            java.util.List<Object> functionsList = om.convertValue(functions, java.util.List.class);
+
+            // Build request with Tool calling support
+            Map<String, Object> body = Map.of("model", model(), "messages", messages, "tools", functionsList,
+                    "tool_choice", "auto", "temperature", 0.7);
+
+            String raw = rest.post().uri("/chat/completions").header(HttpHeaders.AUTHORIZATION, "Bearer " + key)
+                    .contentType(MediaType.APPLICATION_JSON).body(body).retrieve().body(String.class);
+
+            if (raw == null || raw.isBlank()) {
+                throw new IllegalStateException("OpenAI response body was empty");
+            }
+
+            return raw; // Return full response so caller can parse tool_calls
+        } catch (Exception e) {
+            throw new IllegalStateException("Function calling request failed", e);
+        }
+    }
+
+    /**
+     * Extract assistant message and tool_calls from OpenAI response. Used in
+     * function calling workflows to see what the AI wants to do.
+     */
+    public record AIAssistantResponse(String assistantMessage, java.util.List<ToolCall> toolCalls) {
+    }
+
+    public record ToolCall(String id, String function, String arguments) {
+    }
+
+    public AIAssistantResponse parseAssistantResponse(String rawResponse) {
+        try {
+            JsonNode resp = om.readTree(rawResponse);
+            JsonNode choices = resp.path("choices");
+
+            if (!choices.isArray() || choices.size() == 0) {
+                throw new IllegalStateException("No choices in OpenAI response");
+            }
+
+            JsonNode firstChoice = choices.get(0);
+            JsonNode message = firstChoice.path("message");
+
+            String assistantMessage = message.path("content").asText("");
+
+            java.util.List<ToolCall> toolCalls = new java.util.ArrayList<>();
+            JsonNode toolCallsNode = message.path("tool_calls");
+            if (toolCallsNode.isArray()) {
+                for (JsonNode toolCall : toolCallsNode) {
+                    String id = toolCall.path("id").asText();
+                    String functionName = toolCall.path("function").path("name").asText();
+                    String arguments = toolCall.path("function").path("arguments").asText();
+                    toolCalls.add(new ToolCall(id, functionName, arguments));
+                }
+            }
+
+            return new AIAssistantResponse(assistantMessage, toolCalls);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to parse AI assistant response", e);
+        }
+    }
 }

@@ -50,16 +50,30 @@ public class MealPlanAIService {
         try {
             log.info("Saving AI-generated meal plan for user: {}, {} days", userId, response.numberOfDays());
 
+            // Debug: print plan structure
+            int totalMealCount = response.days().stream().mapToInt(day -> day.meals().size()).sum();
+            log.info("Meal plan summary: {} days, {} total meals", response.days().size(), totalMealCount);
+
+            for (int i = 0; i < response.days().size(); i++) {
+                var day = response.days().get(i);
+                log.debug("  Day {}: {} meals ({} kcal)", i + 1, day.meals().size(),
+                        Math.round(day.totalCaloriesKcal()));
+            }
+
             // Step 1: Create and save MealPlanEntity
             var mealPlan = createMealPlanEntity(userId, response);
             mealPlan = mealPlanRepository.save(mealPlan);
-            log.info("Saved meal plan with ID: {}", mealPlan.getId());
+            log.info("Saved meal plan with ID: {}, date range: {} to {}", mealPlan.getId(), mealPlan.getStartDate(),
+                    mealPlan.getEndDate());
 
             // Step 2: Create and save individual MealPlanMealEntity for each day/meal
             var mealEntities = new ArrayList<MealPlanMealEntity>();
             int positionIndex = 0;
 
             for (var dayNutrition : response.days()) {
+                var dayMealCount = dayNutrition.meals().size();
+                log.debug("Processing day '{}': {} meals", dayNutrition.dayLabel(), dayMealCount);
+
                 for (var meal : dayNutrition.meals()) {
                     // Parse day number from "Day N" label
                     LocalDate mealDate = extractDateFromDay(dayNutrition.dayLabel(), response);
@@ -68,12 +82,18 @@ public class MealPlanAIService {
                             meal.mealType(), meal.recipeId(), positionIndex++, OffsetDateTime.now(),
                             OffsetDateTime.now());
                     mealEntities.add(mealEntity);
+
+                    log.trace("  Created meal entity: {} ({}) for {}", meal.recipeTitle(), meal.mealType(), mealDate);
                 }
             }
 
             // Batch save all meals
-            mealPlanMealRepository.saveAll(mealEntities);
-            log.info("Saved {} meal plan meals", mealEntities.size());
+            if (!mealEntities.isEmpty()) {
+                mealPlanMealRepository.saveAll(mealEntities);
+                log.info("Saved {} meal plan meals to database", mealEntities.size());
+            } else {
+                log.error("NO MEALS TO SAVE! The meal plan has 0 meals. This will result in empty daily views.");
+            }
 
             return mealPlan;
         } catch (Exception e) {

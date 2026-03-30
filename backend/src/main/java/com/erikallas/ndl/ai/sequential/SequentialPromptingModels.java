@@ -13,48 +13,48 @@ import java.util.UUID;
  */
 public class SequentialPromptingModels {
 
-    /**
-     * User's meal planning request parsed for AI processing.
-     */
-    public record MealPlanningRequest(String query, int numberOfDays, String mealType, Integer calorieTarget,
-            Integer proteinTargetG, List<String> dietaryPreferences, List<String> cuisinePreferences,
-            List<String> allergies) {
-    }
+        /**
+         * User's meal planning request parsed for AI processing.
+         */
+        public record MealPlanningRequest(String query, int numberOfDays, String mealType, Integer calorieTarget,
+                        Integer proteinTargetG, Integer carbsTargetG, Integer fatsTargetG,
+                        List<String> dietaryPreferences, List<String> cuisinePreferences, List<String> allergies) {
+        }
 
-    /**
-     * Recipe context with semantic relevance score.
-     */
-    public record ScoredRecipe(UUID recipeId, String title, String cuisine, String mealType, int timeMinutes,
-            double relevanceScore, double caloriesKcal, double proteinG, double carbsG, double fatsG) {
-    }
+        /**
+         * Recipe context with semantic relevance score.
+         */
+        public record ScoredRecipe(UUID recipeId, String title, String cuisine, String mealType, int timeMinutes,
+                        double relevanceScore, double caloriesKcal, double proteinG, double carbsG, double fatsG) {
+        }
 
-    /**
-     * Meal slot in a generated plan.
-     */
-    public record PlannedMeal(String dayLabel, String mealType, UUID recipeId, String recipeTitle, int servings,
-            double caloriesKcal, double proteinG, double carbsG, double fatsG) {
-    }
+        /**
+         * Meal slot in a generated plan.
+         */
+        public record PlannedMeal(String dayLabel, String mealType, UUID recipeId, String recipeTitle, int servings,
+                        double caloriesKcal, double proteinG, double carbsG, double fatsG) {
+        }
 
-    /**
-     * Daily nutrition summary for a meal plan.
-     */
-    public record DailyNutritionSummary(String dayLabel, double totalCaloriesKcal, double totalProteinG,
-            double totalCarbsG, double totalFatsG, List<PlannedMeal> meals) {
-    }
+        /**
+         * Daily nutrition summary for a meal plan.
+         */
+        public record DailyNutritionSummary(String dayLabel, double totalCaloriesKcal, double totalProteinG,
+                        double totalCarbsG, double totalFatsG, List<PlannedMeal> meals) {
+        }
 
-    /**
-     * Complete generated meal plan response.
-     */
-    public record MealPlanResponse(String query, int numberOfDays, double totalCalories, double totalProtein,
-            List<DailyNutritionSummary> days, String planningNotes) {
-    }
+        /**
+         * Complete generated meal plan response.
+         */
+        public record MealPlanResponse(String query, int numberOfDays, double totalCalories, double totalProtein,
+                        List<DailyNutritionSummary> days, String planningNotes) {
+        }
 
-    /**
-     * Step-by-step planning status for tracking.
-     */
-    public record PlanningStep(String stepName, String status, String description, Object data) {
-    }
+        /**
+         * Step-by-step planning status for tracking.
+         */
+        public record PlanningStep(String stepName, String status, String description, Object data) {
+        }
 
-    private SequentialPromptingModels() {
-    }
+        private SequentialPromptingModels() {
+        }
 }

@@ -66,6 +66,8 @@ export type AIGenerationRequest = {
     mealType?: string;
     calorieTarget?: number;
     proteinTargetG?: number;
+    carbsTargetG?: number;
+    fatsTargetG?: number;
     dietaryPreferences?: string[];
     cuisinePreferences?: string[];
     allergies?: string[];

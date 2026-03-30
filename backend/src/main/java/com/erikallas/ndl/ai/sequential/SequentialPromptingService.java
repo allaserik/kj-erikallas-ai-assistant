@@ -119,19 +119,27 @@ public class SequentialPromptingService {
         // Build semantic queries for each meal type
         List<String> queries = buildSemanticQueries(request);
 
+        log.info("Step 2: Starting semantic recipe retrieval with {} queries", queries.size());
+
         for (String query : queries) {
             try {
                 var recipes = ragRetrieverService.retrieveRecipesByQuery(query, 15);
+                log.debug("Query '{}': Retrieved {} recipes", query, recipes.size());
                 allRecipes.addAll(recipes);
             } catch (Exception e) {
-                log.warn("Failed to retrieve recipes for query: {}", query, e);
+                log.error("Failed to retrieve recipes for query '{}': {}", query, e.getMessage(), e);
             }
         }
 
         // Remove duplicates by recipe ID
-        return allRecipes.stream()
+        var uniqueRecipes = allRecipes.stream()
                 .collect(Collectors.toMap(RecipeDetail::id, r -> r, (existing, replacement) -> existing)).values()
                 .stream().collect(Collectors.toList());
+
+        log.info("Step 2 Complete: Retrieved {} total recipes, {} unique after deduplication", allRecipes.size(),
+                uniqueRecipes.size());
+
+        return uniqueRecipes;
     }
 
     /**
@@ -234,6 +242,8 @@ public class SequentialPromptingService {
 
         List<SequentialPromptingModels.DailyNutritionSummary> days = new ArrayList<>();
 
+        log.info("Step 4: Starting meal plan assembly with {} available recipes", allRecipes.size());
+
         // Build dietary info for meal selection
         List<String> dietaryTags = request.dietaryPreferences() != null ? request.dietaryPreferences() : List.of();
         List<String> allergyCodes = request.allergies() != null ? request.allergies() : List.of();
@@ -242,6 +252,11 @@ public class SequentialPromptingService {
                 : List.of();
 
         Set<UUID> usedRecipes = new HashSet<>();
+
+        // Check if recipes are available
+        if (allRecipes.isEmpty()) {
+            log.error("NO RECIPES AVAILABLE! Recipe retrieval failed. Check RAG service and database.");
+        }
 
         // Generate daily plans
         for (int day = 1; day <= request.numberOfDays(); day++) {
@@ -271,16 +286,35 @@ public class SequentialPromptingService {
                         dailyProtein += selectedRecipe.proteinG().doubleValue();
                         dailyCarbsG += selectedRecipe.carbsG().doubleValue();
                         dailyFats += selectedRecipe.fatsG().doubleValue();
+
+                        log.debug("Day {}: Selected {} - {} ({} kcal)", day, mealType, selectedRecipe.title(),
+                                selectedRecipe.caloriesKcal());
+                    } else {
+                        log.warn("Day {}: Could not select recipe for {}", day, mealType);
                     }
                 } catch (Exception e) {
-                    log.warn("Failed to select {} for day {}, trying next meal type", mealType, day, e);
+                    log.error("Failed to select {} for day {}: {}", mealType, day, e.getMessage(), e);
                 }
             }
 
             if (!dailyMeals.isEmpty()) {
                 days.add(new SequentialPromptingModels.DailyNutritionSummary("Day " + day, dailyCalories, dailyProtein,
                         dailyCarbsG, dailyFats, dailyMeals));
+                log.info("Day {}: Added {} meals ({} kcal total)", day, dailyMeals.size(), Math.round(dailyCalories));
+            } else {
+                log.error("Day {}: NO MEALS SELECTED! Recipe selection strategy returned null for all meal types.",
+                        day);
             }
+        }
+
+        log.info("Step 4 Complete: Assembled {} days ({} with meals, {} empty)", request.numberOfDays(), days.size(),
+                request.numberOfDays() - days.size());
+
+        if (days.isEmpty()) {
+            log.error(
+                    "CRITICAL: Meal plan assembly resulted in 0 days! This means recipe selection completely failed.");
+            log.error(
+                    "Possible causes: (1) Recipe database is empty, (2) RAG retrieval failed, (3) No recipes match criteria");
         }
 
         return days;

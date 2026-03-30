@@ -6,6 +6,7 @@ import com.erikallas.ndl.ai.function.FunctionCallingHandler;
 import com.erikallas.ndl.ai.rag.RAGRetrieverService;
 import com.erikallas.ndl.ai.sequential.SequentialPromptingService;
 import com.erikallas.ndl.ai.sequential.SequentialPromptingModels;
+import com.erikallas.ndl.ai.sequential.MealPlanOrchestratorService;
 import com.erikallas.ndl.ai.mealplan.MealPlanAIService;
 import com.erikallas.ndl.nutrition.recipe.RecipeCatalogModels.RecipeDetail;
 import com.erikallas.ndl.nutrition.recipe.RecipeCatalogQueryRepository;
@@ -34,12 +35,12 @@ import org.springframework.web.bind.annotation.*;
  * Semantic recipe search
  * 
  * PHASE 3: Sequential multi-step meal planning - POST
- * /api/meal-plans/ai/generate - Generate complete meal plan via sequential
- * prompting
+ * /api/meal-plans/ai/generate - Generate meal plan via sequential prompting
+ * (IMPROVED: Now uses MealPlanOrchestratorService for true sequential prompts)
  * 
- * PHASE 4+ (PENDING): - POST /api/meal-plans/ai/regenerate/{mealId} -
- * Regenerate specific meal - GET /api/meal-plans/ai/alternatives/{mealId} - Get
- * alternative suggestions
+ * PHASE 4: Generate and save meal plan - POST
+ * /api/meal-plans/ai/generate-and-save - Full workflow with database
+ * persistence
  */
 @RestController
 @SecurityRequirement(name = "bearerAuth")
@@ -52,6 +53,7 @@ public class AIRecipeGenerationController {
     private final FunctionCallingHandler functionCallingHandler;
     private final RAGRetrieverService ragRetrieverService;
     private final SequentialPromptingService sequentialPromptingService;
+    private final MealPlanOrchestratorService mealPlanOrchestratorService; // NEW: True sequential prompting
     private final MealPlanAIService mealPlanAIService;
     private final RecipeCatalogQueryRepository recipeCatalogQueryRepository;
     private final MealPlanMealRepository mealPlanMealRepository;
@@ -59,12 +61,14 @@ public class AIRecipeGenerationController {
 
     public AIRecipeGenerationController(UserService userService, FunctionCallingHandler functionCallingHandler,
             RAGRetrieverService ragRetrieverService, SequentialPromptingService sequentialPromptingService,
-            MealPlanAIService mealPlanAIService, RecipeCatalogQueryRepository recipeCatalogQueryRepository,
-            MealPlanMealRepository mealPlanMealRepository, ObjectMapper objectMapper) {
+            MealPlanOrchestratorService mealPlanOrchestratorService, MealPlanAIService mealPlanAIService,
+            RecipeCatalogQueryRepository recipeCatalogQueryRepository, MealPlanMealRepository mealPlanMealRepository,
+            ObjectMapper objectMapper) {
         this.userService = userService;
         this.functionCallingHandler = functionCallingHandler;
         this.ragRetrieverService = ragRetrieverService;
         this.sequentialPromptingService = sequentialPromptingService;
+        this.mealPlanOrchestratorService = mealPlanOrchestratorService;
         this.mealPlanAIService = mealPlanAIService;
         this.recipeCatalogQueryRepository = recipeCatalogQueryRepository;
         this.mealPlanMealRepository = mealPlanMealRepository;
@@ -133,19 +137,14 @@ public class AIRecipeGenerationController {
     }
 
     /**
-     * Phase 3: Generate complete meal plan via sequential prompting.
+     * Phase 3: Generate meal plan via TRUE sequential prompting.
      * 
-     * Multi-step orchestration: 1. Parse request → extract dietary preferences,
-     * nutrition targets 2. Semantic search → retrieve relevant recipes for
-     * different meal types 3. Score recipes → rank by nutrition alignment and
-     * preferences 4. Assemble plan → create daily meal combinations 5. Calculate
-     * totals → aggregate nutrition across days
+     * IMPROVED: Now uses MealPlanOrchestratorService which implements 3+ distinct
+     * AI prompts: - STEP 1 (AI): Analyze user profile → nutrition strategy - STEP 2
+     * (AI): Design meal structure - STEP 3 (AI + RAG): Generate recipes with
+     * semantic search - STEP 4: Assemble final plan
      * 
-     * Example request body: { "query": "healthy high-protein breakfast plan",
-     * "numberOfDays": 3, "mealType": "breakfast", "calorieTarget": 2000,
-     * "proteinTargetG": 150, "dietaryPreferences": ["low-carb", "high-protein"],
-     * "cuisinePreferences": ["mediterranean", "asian"], "allergies": ["peanuts",
-     * "shellfish"] }
+     * Each step passes context to the next for true sequential reasoning.
      * 
      * @param auth    JWT authentication
      * @param request Meal planning request with preferences
@@ -158,10 +157,14 @@ public class AIRecipeGenerationController {
         var user = userService.ensureUserFromJwt(auth);
 
         try {
-            // Generate meal plan via sequential prompting
-            var mealPlan = sequentialPromptingService.generateMealPlan(request);
+            logger.info("Generating meal plan via sequential prompting for user: {}", user.getId());
+
+            // Use MealPlanOrchestratorService for true sequential prompting (NEW)
+            var mealPlan = mealPlanOrchestratorService.generateMealPlanSequential(request);
+
             return ApiSuccess.of(mealPlan);
         } catch (Exception e) {
+            logger.error("Meal plan generation failed", e);
             return ApiSuccess.of(null);
         }
     }
@@ -187,8 +190,10 @@ public class AIRecipeGenerationController {
         var user = userService.ensureUserFromJwt(auth);
 
         try {
+            logger.info("Generating and saving meal plan via sequential prompting for user: {}", user.getId());
+
             // Step 1: Generate meal plan via sequential prompting (Phase 3)
-            var mealPlan = sequentialPromptingService.generateMealPlan(request);
+            var mealPlan = mealPlanOrchestratorService.generateMealPlanSequential(request);
 
             // Step 2: Save to database (Phase 4)
             var savedPlan = mealPlanAIService.saveMealPlan(user.getId(), mealPlan);
@@ -198,94 +203,8 @@ public class AIRecipeGenerationController {
 
             return ApiSuccess.of(response);
         } catch (Exception e) {
-            logger.error("Meal plan generation failed for user {}: {}", user.getId(), e.getMessage(), e);
-            throw new RuntimeException("Meal plan generation failed: " + e.getMessage(), e);
+            logger.error("Meal plan generation and save failed", e);
+            throw new RuntimeException("Meal plan generation failed: " + e.getMessage());
         }
-    }
-
-    /**
-     * PHASE 4+: Get alternative meal suggestions.
-     * 
-     * Finds alternative recipes for a specific meal by: 1. Getting the current
-     * meal's type and nutrition profile 2. Searching for recipes of the same meal
-     * type 3. Filtering out the current recipe 4. Returning top alternatives sorted
-     * by relevance
-     * 
-     * @param auth   JWT authentication
-     * @param mealId ID of the meal to get alternatives for
-     * @param limit  Maximum number of alternatives to return (default 5, max 20)
-     * @return List of alternative recipes with full details
-     */
-    @GetMapping("/alternatives/{mealId}")
-    public ApiSuccess<List<RecipeDetail>> getAlternativeMeals(JwtAuthenticationToken auth, @PathVariable String mealId,
-            @RequestParam(defaultValue = "5") int limit) {
-
-        var user = userService.ensureUserFromJwt(auth);
-        int topK = Math.min(Math.max(limit, 1), 20); // Clamp between 1 and 20
-
-        try {
-            // Step 1: Get the current meal
-            var mealUuid = java.util.UUID.fromString(mealId);
-            var meal = mealPlanMealRepository.findById(mealUuid)
-                    .orElseThrow(() -> new IllegalArgumentException("Meal not found: " + mealId));
-
-            // Step 2: Search for recipes of the same meal type
-            var filters = new RecipeCatalogModels.RecipeSearchFilters(null, // q - no text query
-                    null, // cuisine - keep open
-                    meal.getMealType(), // meal type
-                    null, // dietaryTag
-                    null, // maxTimeMinutes
-                    null, // maxCaloriesKcal
-                    topK + 1 // Request one extra to account for current recipe
-            );
-
-            var candidates = recipeCatalogQueryRepository.search(filters);
-
-            // Step 3: Filter out the current recipe and get details
-            List<RecipeDetail> alternatives = new ArrayList<>();
-            for (var candidate : candidates) {
-                if (!candidate.id().equals(meal.getRecipeId()) && alternatives.size() < topK) {
-                    try {
-                        var detail = recipeCatalogQueryRepository.getById(candidate.id());
-                        if (detail != null) {
-                            alternatives.add(detail);
-                        }
-                    } catch (Exception e) {
-                        logger.debug("Failed to get recipe details for {}: {}", candidate.id(), e.getMessage());
-                    }
-                }
-            }
-
-            logger.debug("Found {} alternatives for meal {} (type: {})", alternatives.size(), mealId,
-                    meal.getMealType());
-            return ApiSuccess.of(alternatives);
-        } catch (Exception e) {
-            logger.error("Failed to get alternatives for meal {}: {}", mealId, e.getMessage(), e);
-            return ApiSuccess.of(new ArrayList<>()); // Return empty list on error
-        }
-    }
-
-    /**
-     * PHASE 4+: Regenerate a single meal in a meal plan.
-     * 
-     * Uses semantic search and sequential prompting to generate a replacement meal
-     * for a specific meal slot while preserving meal type and nutrition
-     * constraints.
-     * 
-     * @param auth    JWT authentication
-     * @param mealId  ID of the meal to regenerate
-     * @param request Preferences for regeneration (optional overrides)
-     * @return Updated meal with new recipe
-     */
-    @PostMapping("/meals/{mealId}/regenerate")
-    public ApiSuccess<String> regenerateMeal(JwtAuthenticationToken auth, @PathVariable String mealId,
-            @RequestBody(required = false) Map<String, Object> request) {
-
-        var user = userService.ensureUserFromJwt(auth);
-
-        // PHASE 4+: This endpoint is planned but not yet implemented
-        // It will use semantic search to find alternative recipes for the meal slot
-        logger.info("Regenerate meal {} for user {} - Deferred to Phase 4+", mealId, user.getId());
-        return ApiSuccess.of("Meal regeneration is planned for Phase 4+. Use Swap or Replace features for now.");
     }
 }
