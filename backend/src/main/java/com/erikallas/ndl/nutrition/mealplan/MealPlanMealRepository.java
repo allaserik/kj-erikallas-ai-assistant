@@ -7,4 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MealPlanMealRepository extends JpaRepository<MealPlanMealEntity, UUID> {
     List<MealPlanMealEntity> findByMealPlanIdAndDayDate(UUID mealPlanId, LocalDate dayDate);
+
+    List<MealPlanMealEntity> findByMealPlanId(UUID mealPlanId);
+
+    void deleteByMealPlanId(UUID mealPlanId);
 }

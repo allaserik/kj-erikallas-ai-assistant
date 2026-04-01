@@ -14,7 +14,6 @@ import RecipeExplorerPage from './features/nutrition/pages/RecipeExplorerPage';
 import ShoppingListPage from './features/nutrition/pages/ShoppingListPage';
 import MealPlanPage from './features/nutrition/pages/MealPlanPage';
 import AIGeneratedMealPlansPage from './features/nutrition/pages/AIGeneratedMealPlansPage';
-import { MealManagementPage } from './features/nutrition/pages/MealManagementPage';
 import MealPlansHubPage from './features/nutrition/pages/MealPlansHubPage';
 import SimpleMealGeneratorPage from './features/nutrition/pages/SimpleMealGeneratorPage';
 import MealPlanDetailPage from './features/nutrition/pages/MealPlanDetailPage';
@@ -80,7 +79,7 @@ function LoggedInContent() {
           <Route path="preferences" element={<NutritionPreferencesPage />} />
           <Route path="generate" element={<SimpleMealGeneratorPage />} />
           <Route path="ai-generate" element={<AIGeneratedMealPlansPage />} />
-          <Route path="manage" element={<MealManagementPage />} />
+          <Route path="manage" element={<Navigate to="/nutrition/plans" replace />} />
           <Route path="intake" element={<NutritionIntakeLoggingPage />} />
         </Route>
 

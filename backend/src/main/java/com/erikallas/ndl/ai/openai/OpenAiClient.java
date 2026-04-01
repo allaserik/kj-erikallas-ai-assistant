@@ -32,7 +32,12 @@ public class OpenAiClient {
     }
 
     public String generateInsightJson(String systemPrompt, String userPrompt) {
-        return generateJsonResponse(systemPrompt, userPrompt, null);
+        return generateJsonResponse(systemPrompt, userPrompt, null, 0.7, 1.0);
+    }
+
+    /** Variant that lets each prompt step control temperature and top_p. */
+    public String generateInsightJson(String systemPrompt, String userPrompt, double temperature, double topP) {
+        return generateJsonResponse(systemPrompt, userPrompt, null, temperature, topP);
     }
 
     /**
@@ -40,6 +45,15 @@ public class OpenAiClient {
      * Supports optional custom schema for flexible output formats.
      */
     public String generateJsonResponse(String systemPrompt, String userPrompt, Map<String, Object> customSchema) {
+        return generateJsonResponse(systemPrompt, userPrompt, customSchema, 0.7, 1.0);
+    }
+
+    /**
+     * Fully-parameterised variant — callers can tune temperature and top_p per
+     * prompt step to balance creativity with determinism.
+     */
+    public String generateJsonResponse(String systemPrompt, String userPrompt, Map<String, Object> customSchema,
+            double temperature, double topP) {
         String key = env.getProperty("OPENAI_API_KEY");
         if (key == null || key.isBlank()) {
             throw new IllegalStateException("OPENAI_API_KEY is not set");
@@ -58,10 +72,13 @@ public class OpenAiClient {
         Map<String, Object> responseFormat = Map.of("type", "json_schema", "json_schema",
                 Map.of("name", "structured_response", "strict", true, "schema", schema));
 
-        Map<String, Object> body = Map.of("model", model(), "messages",
-                java.util.List.of(Map.of("role", "system", "content", systemPrompt),
-                        Map.of("role", "user", "content", userPrompt)),
-                "response_format", responseFormat, "temperature", 0.7);
+        java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("model", model());
+        body.put("messages", java.util.List.of(Map.of("role", "system", "content", systemPrompt),
+                Map.of("role", "user", "content", userPrompt)));
+        body.put("response_format", responseFormat);
+        body.put("temperature", temperature);
+        body.put("top_p", topP);
 
         String raw = rest.post().uri("/chat/completions").header(HttpHeaders.AUTHORIZATION, "Bearer " + key)
                 .contentType(MediaType.APPLICATION_JSON).body(body).retrieve().body(String.class);
@@ -93,7 +110,7 @@ public class OpenAiClient {
     /**
      * Generate response with function calling enabled. AI can request function
      * execution and will receive results in conversation.
-     * 
+     *
      * @param systemPrompt        System role instruction
      * @param messagesJson        Serialized message history (supports turn-based
      *                            conversation)
@@ -101,6 +118,15 @@ public class OpenAiClient {
      * @return Raw response including any tool_calls requests
      */
     public String generateWithFunctionCalling(String systemPrompt, String messagesJson, String functionDefinitions) {
+        return generateWithFunctionCalling(systemPrompt, messagesJson, functionDefinitions, 0.7, 1.0);
+    }
+
+    /**
+     * Variant of {@link #generateWithFunctionCalling} with explicit temperature and
+     * top_p controls for fine-grained prompt step tuning.
+     */
+    public String generateWithFunctionCalling(String systemPrompt, String messagesJson, String functionDefinitions,
+            double temperature, double topP) {
         String key = env.getProperty("OPENAI_API_KEY");
         if (key == null || key.isBlank()) {
             throw new IllegalStateException("OPENAI_API_KEY is not set");
@@ -125,8 +151,13 @@ public class OpenAiClient {
             java.util.List<Object> functionsList = om.convertValue(functions, java.util.List.class);
 
             // Build request with Tool calling support
-            Map<String, Object> body = Map.of("model", model(), "messages", messages, "tools", functionsList,
-                    "tool_choice", "auto", "temperature", 0.7);
+            java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+            body.put("model", model());
+            body.put("messages", messages);
+            body.put("tools", functionsList);
+            body.put("tool_choice", "auto");
+            body.put("temperature", temperature);
+            body.put("top_p", topP);
 
             String raw = rest.post().uri("/chat/completions").header(HttpHeaders.AUTHORIZATION, "Bearer " + key)
                     .contentType(MediaType.APPLICATION_JSON).body(body).retrieve().body(String.class);

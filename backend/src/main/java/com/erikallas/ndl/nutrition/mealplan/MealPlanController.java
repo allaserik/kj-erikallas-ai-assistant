@@ -2,6 +2,7 @@ package com.erikallas.ndl.nutrition.mealplan;
 
 import com.erikallas.ndl.auth.user.UserService;
 import com.erikallas.ndl.common.api.dto.ApiSuccess;
+import com.erikallas.ndl.nutrition.recipe.RecipeCatalogModels;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
@@ -141,6 +142,72 @@ public class MealPlanController {
         var createdMealId = mealPlanManagementService.addMealToDay(mealPlanId, request.dayDate(), request.mealType(),
                 request.recipeId(), now);
         return ApiSuccess.of("Meal added successfully with ID: " + createdMealId);
+    }
+
+    /**
+     * POST /api/meal-plans/meals/{mealId}/regenerate
+     *
+     * Ask the AI to pick a different recipe for this meal slot. The current recipe
+     * is replaced with a RAG-retrieved alternative that better fits the meal type
+     * and user preferences. The original state is snapshotted before the swap.
+     */
+    @PostMapping("/api/meal-plans/meals/{mealId}/regenerate")
+    public ApiSuccess<String> regenerateMeal(@PathVariable UUID mealId, JwtAuthenticationToken auth) {
+        var user = userService.ensureUserFromJwt(auth);
+        var now = OffsetDateTime.now(ZoneOffset.UTC);
+        mealPlanManagementService.regenerateMeal(mealId, user.getId(), now);
+        return ApiSuccess.of("Meal regenerated successfully");
+    }
+
+    /**
+     * GET /api/meal-plans/meals/{mealId}/alternatives
+     *
+     * Return up to 3 alternative recipe suggestions for the given meal slot.
+     * Alternatives are ranked by semantic similarity to the meal type and user
+     * preferences; the currently assigned recipe is excluded.
+     */
+    @GetMapping("/api/meal-plans/meals/{mealId}/alternatives")
+    public ApiSuccess<List<RecipeCatalogModels.RecipeListItem>> getAlternatives(@PathVariable UUID mealId,
+            JwtAuthenticationToken auth) {
+        var user = userService.ensureUserFromJwt(auth);
+        return ApiSuccess.of(mealPlanManagementService.getAlternatives(mealId, user.getId()));
+    }
+
+    /**
+     * GET /api/meal-plans/{mealPlanId}/versions
+     *
+     * List all saved versions of a meal plan, most recent first.
+     */
+    @GetMapping("/api/meal-plans/{mealPlanId}/versions")
+    public ApiSuccess<List<MealPlanVersionResponse>> listVersions(@PathVariable UUID mealPlanId,
+            JwtAuthenticationToken auth) {
+        userService.ensureUserFromJwt(auth);
+        var versions = mealPlanManagementService.listVersions(mealPlanId);
+        var dtos = versions.stream().map(
+                v -> new MealPlanVersionResponse(v.getId(), v.getMealPlanId(), v.getVersionNumber(), v.getCreatedAt()))
+                .collect(java.util.stream.Collectors.toList());
+        return ApiSuccess.of(dtos);
+    }
+
+    /**
+     * POST /api/meal-plans/{mealPlanId}/versions/{versionId}/restore
+     *
+     * Restore the meal plan to the state captured in the given version. The current
+     * state is snapshotted first so the restore itself is reversible.
+     */
+    @PostMapping("/api/meal-plans/{mealPlanId}/versions/{versionId}/restore")
+    public ApiSuccess<String> restoreVersion(@PathVariable UUID mealPlanId, @PathVariable UUID versionId,
+            JwtAuthenticationToken auth) {
+        userService.ensureUserFromJwt(auth);
+        var now = OffsetDateTime.now(ZoneOffset.UTC);
+        mealPlanManagementService.restoreVersion(mealPlanId, versionId, now);
+        return ApiSuccess.of("Meal plan restored to version " + versionId);
+    }
+
+    // ===== Request / Response DTOs =====
+
+    public record MealPlanVersionResponse(UUID id, UUID mealPlanId, int versionNumber,
+            java.time.OffsetDateTime createdAt) {
     }
 
     // ===== Request DTOs =====

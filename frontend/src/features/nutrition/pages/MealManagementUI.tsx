@@ -46,6 +46,7 @@ export function MealManagementUI({ date, onMealsUpdated }: MealManagementUIProps
     const [isAddingMeal, setIsAddingMeal] = useState(false);
     const [newMealType, setNewMealType] = useState("snack");
     const [newMealRecipeId, setNewMealRecipeId] = useState<string>("");
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
     // Get token on mount
     useEffect(() => {
@@ -412,42 +413,45 @@ export function MealManagementUI({ date, onMealsUpdated }: MealManagementUIProps
                                 </button>
 
                                 {/* More Options - Reorder & Replace */}
-                                <div className="relative group">
+                                <div className="relative">
                                     <button
+                                        onClick={() => setOpenMenuId(openMenuId === meal.id ? null : meal.id)}
                                         className="px-3 py-1 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded font-medium transition"
                                         title="More options"
                                     >
                                         ⋮
                                     </button>
-                                    <div className="hidden group-hover:flex flex-col absolute right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                                        {index > 0 && (
+                                    {openMenuId === meal.id && (
+                                        <div className="flex flex-col absolute right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                                            {index > 0 && (
+                                                <button
+                                                    onClick={() => { handleMoveUp(index); setOpenMenuId(null); }}
+                                                    className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left whitespace-nowrap border-b"
+                                                    title="Move up"
+                                                >
+                                                    ↑ Move Up
+                                                </button>
+                                            )}
+                                            {index < meals.length - 1 && (
+                                                <button
+                                                    onClick={() => { handleMoveDown(index); setOpenMenuId(null); }}
+                                                    className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left whitespace-nowrap border-b"
+                                                    title="Move down"
+                                                >
+                                                    ↓ Move Down
+                                                </button>
+                                            )}
                                             <button
-                                                onClick={() => handleMoveUp(index)}
-                                                className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left whitespace-nowrap border-b"
-                                                title="Move up"
+                                                onClick={() => { setReplacingMealId(replacingMealId === meal.id ? null : meal.id); setOpenMenuId(null); }}
+                                                className={`px-4 py-2 text-sm text-left whitespace-nowrap ${replacingMealId === meal.id
+                                                    ? "bg-green-50 text-green-700"
+                                                    : "text-gray-700 hover:bg-gray-100"
+                                                    }`}
                                             >
-                                                ↑ Move Up
+                                                🔄 Replace Recipe
                                             </button>
-                                        )}
-                                        {index < meals.length - 1 && (
-                                            <button
-                                                onClick={() => handleMoveDown(index)}
-                                                className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 text-left whitespace-nowrap border-b"
-                                                title="Move down"
-                                            >
-                                                ↓ Move Down
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={() => setReplacingMealId(replacingMealId === meal.id ? null : meal.id)}
-                                            className={`px-4 py-2 text-sm text-left whitespace-nowrap ${replacingMealId === meal.id
-                                                ? "bg-green-50 text-green-700"
-                                                : "text-gray-700 hover:bg-gray-100"
-                                                }`}
-                                        >
-                                            🔄 Replace Recipe
-                                        </button>
-                                    </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

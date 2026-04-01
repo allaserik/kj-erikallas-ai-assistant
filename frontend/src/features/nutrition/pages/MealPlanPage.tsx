@@ -7,6 +7,7 @@ import { Button } from "../../../shared/ui/Button";
 import { Card, CardBody, CardTitle } from "../../../shared/ui/Card";
 import { Spinner } from "../../../shared/ui/Spinner";
 import { TextField } from "../../../shared/ui/TextField";
+import { MealManagementUI } from "./MealManagementUI";
 
 type Duration = "daily" | "weekly";
 const LAST_MEAL_PLAN_ID_KEY = "ndl_last_meal_plan_id";
@@ -19,6 +20,8 @@ export default function MealPlanPage() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<GeneratedMealPlan | null>(null);
+    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
+    const [refreshKey, setRefreshKey] = useState(0);
 
     useEffect(() => {
         const loadLastPlan = async () => {
@@ -26,7 +29,6 @@ export default function MealPlanPage() {
             try {
                 const token = await getToken();
                 if (!token) return;
-                // Prefer backend latest plan so restore works across devices/sessions.
                 const latest = await getLatestMealPlan(token);
                 if (latest) {
                     setResult(latest);
@@ -35,7 +37,6 @@ export default function MealPlanPage() {
                 }
                 localStorage.removeItem(LAST_MEAL_PLAN_ID_KEY);
             } catch {
-                // Fallback: use locally remembered id if latest endpoint has no data yet.
                 const mealPlanId = localStorage.getItem(LAST_MEAL_PLAN_ID_KEY);
                 if (!mealPlanId) return;
                 try {
@@ -54,6 +55,14 @@ export default function MealPlanPage() {
         };
         loadLastPlan();
     }, [getToken, isAuthenticated]);
+
+    // When plan changes, pick today if it's in the plan, otherwise pick the first day
+    useEffect(() => {
+        if (!result) return;
+        const today = new Date().toISOString().slice(0, 10);
+        const inPlan = result.days.some((d: any) => d.date === today);
+        setSelectedDate(inPlan ? today : result.startDate);
+    }, [result]);
 
     const onGenerate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -120,41 +129,43 @@ export default function MealPlanPage() {
             {isGenerating && <Spinner label="Generating meal plan..." />}
 
             {result && !isGenerating && (
-                <Card>
-                    <CardTitle>
-                        Plan Ready ({result.periodType}) - {result.totalMeals} meals
-                    </CardTitle>
-                    <CardBody>
-                        <div className="space-y-4">
-                            {result.days.map((day: any) => (
-                                <div key={day.date} className="border border-slate-200 rounded-lg p-3">
-                                    <h3 className="font-semibold text-slate-900 mb-2">{day.date}</h3>
-                                    {day.meals.length === 0 ? (
-                                        <p className="text-sm text-slate-600">No meals generated for this day.</p>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            {day.meals.map((meal: any) => (
-                                                <div
-                                                    key={meal.id}
-                                                    className="border border-slate-100 rounded-md px-3 py-2 bg-slate-50"
-                                                >
-                                                    <div className="text-sm font-medium text-slate-900">
-                                                        {meal.mealType} - {meal.recipeTitle}
-                                                    </div>
-                                                    <div className="text-xs text-slate-600">
-                                                        {meal.cuisine ? `${meal.cuisine} • ` : ""}
-                                                        {meal.timeMinutes != null ? `${meal.timeMinutes} min • ` : ""}
-                                                        {meal.caloriesKcal != null ? `${meal.caloriesKcal} kcal` : "kcal n/a"}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                <>
+                    {/* Plan summary bar */}
+                    <Card>
+                        <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
+                            <span className="font-semibold text-slate-900 capitalize">{result.periodType} Plan</span>
+                            <span>{result.startDate} – {result.endDate}</span>
+                            <span>{result.totalMeals} meals</span>
                         </div>
-                    </CardBody>
-                </Card>
+                    </Card>
+
+                    {/* Day selector tabs */}
+                    <div className="flex flex-wrap gap-2">
+                        {result.days.map((day: any) => (
+                            <button
+                                key={day.date}
+                                onClick={() => { setSelectedDate(day.date); setRefreshKey(k => k + 1); }}
+                                className={`px-3 py-1 rounded-full text-sm font-medium transition border ${selectedDate === day.date
+                                        ? "bg-blue-600 text-white border-blue-600"
+                                        : "bg-white text-slate-700 border-slate-300 hover:border-blue-400"
+                                    }`}
+                            >
+                                {new Date(day.date + "T12:00:00").toLocaleDateString("en", {
+                                    weekday: "short",
+                                    month: "short",
+                                    day: "numeric",
+                                })}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Meal management for the selected day */}
+                    <MealManagementUI
+                        key={`${refreshKey}-${selectedDate}`}
+                        date={selectedDate}
+                        onMealsUpdated={() => setRefreshKey(k => k + 1)}
+                    />
+                </>
             )}
         </div>
     );

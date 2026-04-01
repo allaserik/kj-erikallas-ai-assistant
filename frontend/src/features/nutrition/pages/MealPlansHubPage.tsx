@@ -58,7 +58,7 @@ export default function MealPlansHubPage() {
 
                 {/* View & Manage Current Plan */}
                 <Link
-                    to={latestPlan ? `/nutrition/plan/${latestPlan.mealPlanId}` : "#"}
+                    to={latestPlan ? "/nutrition/plans" : "#"}
                     className={`rounded-lg p-6 transition ${latestPlan
                         ? "bg-blue-50 border border-blue-200 hover:shadow-lg cursor-pointer"
                         : "bg-slate-50 border border-slate-200 cursor-not-allowed opacity-50"
@@ -75,13 +75,13 @@ export default function MealPlansHubPage() {
 
                 {/* Quick Edit Today */}
                 <Link
-                    to="/nutrition/manage"
+                    to="/nutrition/plans"
                     className="bg-indigo-50 border border-indigo-200 rounded-lg p-6 hover:shadow-lg transition cursor-pointer"
                 >
                     <div className="text-3xl mb-2">⚡</div>
                     <h3 className="font-semibold text-lg text-slate-900">Quick Edit Today</h3>
                     <p className="text-sm text-slate-600 mt-2">
-                        Quickly swap, reorder, or replace meals for a specific date
+                        Swap, reorder, or replace meals for any day in your plan
                     </p>
                 </Link>
             </div>

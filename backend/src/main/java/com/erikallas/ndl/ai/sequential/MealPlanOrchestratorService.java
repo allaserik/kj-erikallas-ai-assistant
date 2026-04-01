@@ -111,6 +111,34 @@ public class MealPlanOrchestratorService {
                 - Typical calorie distribution: Breakfast ~25%, Lunch ~35%, Dinner ~30%, Snacks ~10%
 
                 Provide specific calorie and macro targets for EACH meal type (breakfast, lunch, dinner, snack).
+
+                ### Few-shot example — 2000 kcal balanced user ###
+                Input: daily 2000 kcal, P:100g C:250g F:65g, 3 meals + 1 snack, no restrictions
+                Expected output:
+                {
+                  "strategy_summary": "Balanced macros split across 3 main meals and an afternoon snack",
+                  "daily_calorie_target": 2000,
+                  "meal_allocations": [
+                    {"meal_type":"breakfast","calories":500,"protein_g":25,"carbs_g":63,"fats_g":16},
+                    {"meal_type":"lunch","calories":700,"protein_g":35,"carbs_g":88,"fats_g":23},
+                    {"meal_type":"dinner","calories":600,"protein_g":30,"carbs_g":75,"fats_g":20},
+                    {"meal_type":"snack","calories":200,"protein_g":10,"carbs_g":24,"fats_g":6}
+                  ]
+                }
+
+                ### Few-shot example — 1800 kcal high-protein keto user ###
+                Input: daily 1800 kcal, P:150g C:45g F:120g, 3 meals, keto diet
+                Expected output:
+                {
+                  "strategy_summary": "High-fat ketogenic split with protein emphasis; minimal carbs concentrated at dinner",
+                  "daily_calorie_target": 1800,
+                  "meal_allocations": [
+                    {"meal_type":"breakfast","calories":450,"protein_g":38,"carbs_g":8,"fats_g":32},
+                    {"meal_type":"lunch","calories":630,"protein_g":53,"carbs_g":15,"fats_g":42},
+                    {"meal_type":"dinner","calories":540,"protein_g":45,"carbs_g":18,"fats_g":36},
+                    {"meal_type":"snack","calories":180,"protein_g":14,"carbs_g":4,"fats_g":10}
+                  ]
+                }
                 """;
 
         String userPrompt = String.format(
@@ -149,7 +177,8 @@ public class MealPlanOrchestratorService {
                 request.allergies() != null ? String.join(", ", request.allergies()) : "None", request.numberOfDays());
 
         try {
-            String responseJson = openAi.generateInsightJson(systemPrompt, userPrompt);
+            // Step 1 is analytical — lower temperature for consistency, top_p=0.95
+            String responseJson = openAi.generateInsightJson(systemPrompt, userPrompt, 0.3, 0.95);
             JsonNode parsed = om.readTree(responseJson);
 
             NutritionStrategy strategy = new NutritionStrategy(parsed.path("daily_calorie_target").asInt(2000),
@@ -227,7 +256,8 @@ public class MealPlanOrchestratorService {
                 strategy.summary, strategyJson);
 
         try {
-            String responseJson = openAi.generateInsightJson(systemPrompt, userPrompt);
+            // Step 2 structures the plan — analytical, low temperature
+            String responseJson = openAi.generateInsightJson(systemPrompt, userPrompt, 0.3, 0.95);
             JsonNode parsed = om.readTree(responseJson);
 
             List<MealSlot> slots = new ArrayList<>();
