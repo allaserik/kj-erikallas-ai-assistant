@@ -36,10 +36,12 @@ public class RecipeCatalogController {
             @RequestParam(name = "allergy_tag", required = false) String allergyTag,
             @RequestParam(name = "max_time_minutes", required = false) Integer maxTimeMinutes,
             @RequestParam(name = "max_calories_kcal", required = false) BigDecimal maxCaloriesKcal,
+            @RequestParam(name = "min_protein_g", required = false) BigDecimal minProteinG,
+            @RequestParam(name = "max_protein_g", required = false) BigDecimal maxProteinG,
             @RequestParam(name = "limit", required = false) Integer limit, JwtAuthenticationToken auth) {
         userService.ensureUserFromJwt(auth);
         return ApiSuccess.of(recipeCatalogService.search(new RecipeCatalogModels.RecipeSearchFilters(q, cuisine, meal,
-                dietaryTag, allergyTag, maxTimeMinutes, maxCaloriesKcal, limit)));
+                dietaryTag, allergyTag, maxTimeMinutes, maxCaloriesKcal, minProteinG, maxProteinG, limit)));
     }
 
     @GetMapping("/api/recipes/{recipeId}")

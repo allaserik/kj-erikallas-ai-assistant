@@ -1,6 +1,7 @@
 # Numbers Don't Lie
 
 ---
+
 TODO: need to add:
 frontend .env.local settings information and instructions
 Simplify demo vs clean run modes with clearer instructions and troubleshooting tips
@@ -54,6 +55,48 @@ Bonus/extra functionality implemented:
 - AI: OpenAI Responses API (optional), strict JSON schema output
 - Email: JavaMailSender with SMTP/MailHog support
 - Containerization: Docker Compose for multi-service orchestration
+
+## AI & Nutrition System (Counting Calories — Project 2)
+
+### Prompt Engineering Strategy
+
+Recipe and meal plan generation uses a **three-step sequential prompting** pipeline:
+
+1. **Profile analysis prompt** — Extracts the user's caloric target, macro split, dietary restrictions, and meal structure from their health profile + goals. Uses few-shot examples (a balanced user and a high-protein/keto user) so the model learns the expected output schema from examples rather than schema instructions alone.
+2. **Meal structure prompt** — Given the profile analysis output, determines the day's meal distribution (e.g., three meals + one snack, rough kcal targets per slot). Uses the previous output as structured context so each step builds on confirmed data.
+3. **Recipe generation with function calling** — Generates actual recipes and calls `calculate_nutrition` to compute per-ingredient nutritional values. The function-calling step grounds the model's output in real calculations rather than letting it hallucinate macros.
+
+**AI-generated insights** use a separate short-form prompt that injects the user's recent tracking data (weight trend, calorie deficit/surplus, goal progress) and asks for a single actionable observation. Temperature is varied: 0.7 for recipe creativity, 0.3 for nutritional analysis, 0.5 for substitution suggestions.
+
+### Function Calling Architecture
+
+The `calculate_nutrition` function is registered as an OpenAI tool definition. When the model calls it during recipe generation, the call is intercepted server-side by `FunctionCallingHandler`, which routes to `NutritionCalculationService`. That service:
+
+- Converts ingredient quantities to grams using a unit-conversion table
+- Looks up per-100g nutritional estimates from an internal ingredient map
+- Returns calories, protein, carbs, and fats for the entire ingredient list
+
+The same function-calling pathway is used when a user scales a recipe to a different serving count — the backend re-calls `calculate_nutrition` with the scaled ingredient quantities and uses the result as the authoritative nutrition total (arithmetic recalculation is used as fallback if the function call fails).
+
+### AI Model Selection Rationale
+
+- **Recipe generation, meal planning, and insights**: GPT-4o — chosen for its large context window (required for multi-step sequential prompts) and reliable instruction following with strict JSON schema output.
+- **Embedding / RAG retrieval**: `text-embedding-3-small` — low cost, sufficient quality for semantic recipe search over the local recipe catalog.
+- Strict JSON schema mode (`response_format: json_schema`) is used for all structured output to eliminate hallucinated fields or malformed responses.
+
+### Data Model Decisions
+
+- **Recipes** are stored with standardized units (all weights in grams, volumes in millilitres, energy in kcal, time in minutes) so the nutrition math doesn't need unit-conversion logic at query time.
+- **Dietary tags** are stored as a PostgreSQL text array — simple to query with `@>` (contains) and extensible without schema changes.
+- **pgvector embeddings** are stored alongside each recipe for semantic RAG retrieval, generated once on import and reused across all searches.
+- **Nutrition values** are stored both on the recipe row (pre-aggregated, from import) and as a computed CTE at query time from ingredient-level data — the CTE value is preferred for accuracy; the row value is the fallback.
+
+### Error Handling
+
+- **Function calling**: `FunctionCallingHandler` wraps every `executeFunction` call; catches JSON parse errors, missing parameters, out-of-range values, and execution exceptions — each case logs a warning and returns a structured error response so callers can fall back gracefully.
+- **AI generation timeouts**: All OpenAI calls are wrapped with a configurable timeout. On timeout or API error, the system returns cached insights (24-hour TTL) if available, or a static fallback message.
+- **Retry and caching**: Insight generation uses a daily cache keyed by user ID + date, preventing redundant API calls and ensuring the UI always shows something even when the AI service is offline.
+- **Recipe scaling fallback**: If function-calling-based nutrition recalculation fails for any reason, the endpoint falls back to arithmetic scaling of the stored per-ingredient values.
 
 ## Demo Data
 

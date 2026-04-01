@@ -61,6 +61,8 @@ export type RecipeSearchParams = {
     allergyTag?: string;
     maxTimeMinutes?: number;
     maxCaloriesKcal?: number;
+    minProteinG?: number;
+    maxProteinG?: number;
     limit?: number;
 };
 
@@ -73,6 +75,8 @@ function toSearchQuery(params: RecipeSearchParams): string {
     if (params.allergyTag) q.set("allergy_tag", params.allergyTag);
     if (params.maxTimeMinutes != null) q.set("max_time_minutes", String(params.maxTimeMinutes));
     if (params.maxCaloriesKcal != null) q.set("max_calories_kcal", String(params.maxCaloriesKcal));
+    if (params.minProteinG != null) q.set("min_protein_g", String(params.minProteinG));
+    if (params.maxProteinG != null) q.set("max_protein_g", String(params.maxProteinG));
     if (params.limit != null) q.set("limit", String(params.limit));
     const query = q.toString();
     return query ? `?${query}` : "";

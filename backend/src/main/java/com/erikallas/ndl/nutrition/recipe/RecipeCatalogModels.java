@@ -29,7 +29,8 @@ public class RecipeCatalogModels {
         }
 
         public record RecipeSearchFilters(String q, String cuisine, String meal, String dietaryTag, String allergyTag,
-                        Integer maxTimeMinutes, BigDecimal maxCaloriesKcal, Integer limit) {
+                        Integer maxTimeMinutes, BigDecimal maxCaloriesKcal, BigDecimal minProteinG,
+                        BigDecimal maxProteinG, Integer limit) {
         }
 
         /** Response for the substitute-ingredient endpoint. */

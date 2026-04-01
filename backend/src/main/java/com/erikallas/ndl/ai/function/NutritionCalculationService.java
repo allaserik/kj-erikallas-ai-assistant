@@ -2,7 +2,6 @@ package com.erikallas.ndl.ai.function;
 
 import com.erikallas.ndl.ai.function.FunctionCallingHandler.IngredientInput;
 import com.erikallas.ndl.ai.function.FunctionCallingHandler.NutritionResult;
-import com.erikallas.ndl.nutrition.recipe.RecipeCatalogService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,8 +22,6 @@ import java.util.*;
 @Service
 public class NutritionCalculationService {
     private static final Logger log = LoggerFactory.getLogger(NutritionCalculationService.class);
-
-    private final RecipeCatalogService recipeCatalogService;
 
     // Unit conversions to grams (approximate)
     private static final Map<String, Double> UNIT_TO_GRAMS = Map.ofEntries(Map.entry("g", 1.0), Map.entry("mg", 0.001),
@@ -87,8 +84,7 @@ public class NutritionCalculationService {
             // Default fallback
             Map.entry("default", new double[] { 100.0, 5.0, 15.0, 3.0 }));
 
-    public NutritionCalculationService(RecipeCatalogService recipeCatalogService) {
-        this.recipeCatalogService = recipeCatalogService;
+    public NutritionCalculationService() {
     }
 
     /**

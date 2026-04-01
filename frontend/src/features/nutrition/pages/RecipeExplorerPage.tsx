@@ -18,6 +18,7 @@ type Filters = {
     allergyTag: string;
     maxTimeMinutes: string;
     maxCaloriesKcal: string;
+    minProteinG: string;
 };
 
 const defaultFilters: Filters = {
@@ -28,6 +29,7 @@ const defaultFilters: Filters = {
     allergyTag: "",
     maxTimeMinutes: "",
     maxCaloriesKcal: "",
+    minProteinG: "",
 };
 
 export default function RecipeExplorerPage() {
@@ -61,6 +63,7 @@ export default function RecipeExplorerPage() {
                     allergyTag: filters.allergyTag || undefined,
                     maxTimeMinutes: filters.maxTimeMinutes ? Number(filters.maxTimeMinutes) : undefined,
                     maxCaloriesKcal: filters.maxCaloriesKcal ? Number(filters.maxCaloriesKcal) : undefined,
+                    minProteinG: filters.minProteinG ? Number(filters.minProteinG) : undefined,
                     limit: 25,
                 },
                 token
@@ -210,6 +213,13 @@ export default function RecipeExplorerPage() {
                             onChange={(e) => setFilters((prev) => ({ ...prev, maxCaloriesKcal: e.target.value }))}
                             placeholder="700"
                         />
+                        <TextField
+                            label="Min protein (g)"
+                            type="number"
+                            value={filters.minProteinG}
+                            onChange={(e) => setFilters((prev) => ({ ...prev, minProteinG: e.target.value }))}
+                            placeholder="20"
+                        />
                         <div className="md:col-span-3">
                             <Button type="submit" disabled={isLoading || !isAuthenticated}>
                                 {isLoading ? "Searching..." : "Search Recipes"}
@@ -260,10 +270,33 @@ export default function RecipeExplorerPage() {
                             )}
                             {!isLoadingDetail && selectedRecipe && (
                                 <div className="space-y-3">
-                                    <h3 className="text-lg font-semibold text-slate-900">{selectedRecipe.title}</h3>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <h3 className="text-lg font-semibold text-slate-900">{selectedRecipe.title}</h3>
+                                        {selectedRecipe.difficultyLevel && (
+                                            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 capitalize">
+                                                {selectedRecipe.difficultyLevel}
+                                            </span>
+                                        )}
+                                    </div>
                                     <p className="text-sm text-slate-600">
                                         {selectedRecipe.meal} • {selectedRecipe.timeMinutes} min • {selectedRecipe.nutrition.caloriesKcal} kcal
                                     </p>
+                                    {selectedRecipe.img ? (
+                                        <img
+                                            src={selectedRecipe.img}
+                                            alt={selectedRecipe.title}
+                                            className="w-full rounded-lg object-cover max-h-48"
+                                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                                        />
+                                    ) : (
+                                        <div className="w-full rounded-lg bg-slate-100 border border-slate-200 max-h-48 h-36 flex flex-col items-center justify-center gap-1 text-slate-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 7h2l2-3h10l2 3h2a1 1 0 011 1v11a1 1 0 01-1 1H3a1 1 0 01-1-1V8a1 1 0 011-1z" />
+                                                <circle cx="12" cy="13" r="3.5" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                            <span className="text-xs">No image available</span>
+                                        </div>
+                                    )}
                                     {selectedRecipe.summary && <p className="text-sm text-slate-700">{selectedRecipe.summary}</p>}
 
                                     {/* Nutritional Info with Pie Chart */}
@@ -302,7 +335,7 @@ export default function RecipeExplorerPage() {
                                                         <Cell fill="#f59e0b" />
                                                         <Cell fill="#ef4444" />
                                                     </Pie>
-                                                    <Tooltip formatter={(value: number) => `${value.toFixed(1)} g`} />
+                                                    <Tooltip formatter={(value) => typeof value === "number" ? `${value.toFixed(1)} g` : value} />
                                                     <Legend iconSize={10} />
                                                 </PieChart>
                                             </ResponsiveContainer>
@@ -330,6 +363,9 @@ export default function RecipeExplorerPage() {
                                             ))}
                                         </ol>
                                     </div>
+                                    {selectedRecipe.source && (
+                                        <p className="text-xs text-slate-400">Source: {selectedRecipe.source}</p>
+                                    )}
                                 </div>
                             )}
                         </CardBody>

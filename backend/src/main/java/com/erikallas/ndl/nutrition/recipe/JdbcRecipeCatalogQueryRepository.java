@@ -30,6 +30,8 @@ public class JdbcRecipeCatalogQueryRepository implements RecipeCatalogQueryRepos
         String allergyTag = normalizeBlank(filters.allergyTag());
         Integer maxTimeMinutes = filters.maxTimeMinutes();
         var maxCaloriesKcal = filters.maxCaloriesKcal();
+        var minProteinG = filters.minProteinG();
+        var maxProteinG = filters.maxProteinG();
 
         StringBuilder query = new StringBuilder("""
                 WITH nutrition AS (
@@ -129,6 +131,14 @@ public class JdbcRecipeCatalogQueryRepository implements RecipeCatalogQueryRepos
         if (maxCaloriesKcal != null) {
             query.append("AND COALESCE(n.calories_kcal, r.calories_kcal, 0) <= :maxCaloriesKcal\n");
             params.addValue("maxCaloriesKcal", maxCaloriesKcal);
+        }
+        if (minProteinG != null) {
+            query.append("AND COALESCE(n.protein_g, r.protein_g, 0) >= :minProteinG\n");
+            params.addValue("minProteinG", minProteinG);
+        }
+        if (maxProteinG != null) {
+            query.append("AND COALESCE(n.protein_g, r.protein_g, 0) <= :maxProteinG\n");
+            params.addValue("maxProteinG", maxProteinG);
         }
         query.append("ORDER BY r.title ASC\nLIMIT :limit");
 

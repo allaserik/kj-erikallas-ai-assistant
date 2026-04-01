@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import {
+    ComposedChart,
     LineChart,
     Line,
     BarChart,
     Bar,
+    Cell,
     XAxis,
     YAxis,
     CartesianGrid,
@@ -184,7 +186,7 @@ export function NutritionTrendChart({ daysToShow = 14 }: NutritionTrendChartProp
                 {!isLoading && !error && data.length > 0 && (
                     <ResponsiveContainer width="100%" height={300}>
                         {trendMode === "daily" ? (
-                            <LineChart data={data} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                            <ComposedChart data={data} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                                 <XAxis
                                     dataKey="date"
@@ -194,24 +196,24 @@ export function NutritionTrendChart({ daysToShow = 14 }: NutritionTrendChartProp
                                 <YAxis tick={{ fontSize: 12 }} />
                                 <Tooltip content={<CustomTooltip />} />
                                 <Legend />
-                                <Line
-                                    type="monotone"
-                                    dataKey="consumed"
-                                    stroke="#3b82f6"
-                                    dot={false}
-                                    isAnimationActive={false}
-                                    name="Consumed (kcal)"
-                                />
+                                <Bar dataKey="consumed" name="Consumed (kcal)" isAnimationActive={false}>
+                                    {data.map((entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.consumed <= entry.target ? "#22c55e" : "#ef4444"}
+                                        />
+                                    ))}
+                                </Bar>
                                 <Line
                                     type="monotone"
                                     dataKey="target"
-                                    stroke="#10b981"
+                                    stroke="#f59e0b"
                                     strokeDasharray="5 5"
                                     dot={false}
                                     isAnimationActive={false}
                                     name="Target (kcal)"
                                 />
-                            </LineChart>
+                            </ComposedChart>
                         ) : (
                             <BarChart data={data} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -225,13 +227,19 @@ export function NutritionTrendChart({ daysToShow = 14 }: NutritionTrendChartProp
                                 <Legend />
                                 <Bar
                                     dataKey="consumed"
-                                    fill="#3b82f6"
                                     isAnimationActive={false}
                                     name="Consumed (kcal)"
-                                />
+                                >
+                                    {data.map((entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.consumed <= entry.target ? "#22c55e" : "#ef4444"}
+                                        />
+                                    ))}
+                                </Bar>
                                 <Bar
                                     dataKey="target"
-                                    fill="#10b981"
+                                    fill="#f59e0b"
                                     isAnimationActive={false}
                                     name="Target (kcal)"
                                 />
