@@ -36,6 +36,21 @@ public class RAGRetrieverService {
      * @return List of relevant recipes with details, ranked by semantic similarity
      */
     public List<RecipeDetail> retrieveRecipesByQuery(String query, int topK) {
+        return retrieveRecipesByQuery(query, null, topK);
+    }
+
+    /**
+     * Retrieve relevant recipes filtered by meal type, ranked by semantic
+     * similarity.
+     *
+     * @param query    Semantic query describing desired recipe characteristics
+     * @param mealType Meal type to filter by in DB (e.g. "breakfast", "lunch",
+     *                 "dinner", "snack"). When non-null this is applied as an
+     *                 exact-match filter on the {@code meal} column so the pool
+     *                 always contains recipes appropriate for that meal slot.
+     * @param topK     Number of results to return
+     */
+    public List<RecipeDetail> retrieveRecipesByQuery(String query, String mealType, int topK) {
         try {
             if (query == null || query.trim().isEmpty()) {
                 log.warn("Empty query provided to RAG retriever");
@@ -45,8 +60,12 @@ public class RAGRetrieverService {
             // Compute embedding for the query
             var queryEmbedding = embeddingService.embed(query);
 
-            // Create search filters for initial filtering (keyword-based)
-            RecipeSearchFilters filters = new RecipeSearchFilters(query, null, null, null, null, null,
+            // Use mealType as the dedicated meal-column filter; keep keyword query only
+            // for title/ingredient matching (not as a substitute for the meal filter).
+            String keywordQuery = (mealType != null && query.equalsIgnoreCase(mealType.trim())) ? null : query;
+
+            // Create search filters for initial filtering (keyword + meal type)
+            RecipeSearchFilters filters = new RecipeSearchFilters(keywordQuery, null, mealType, null, null, null,
                     Math.min(topK * 3, 100) // Get more results for semantic re-ranking
             );
 

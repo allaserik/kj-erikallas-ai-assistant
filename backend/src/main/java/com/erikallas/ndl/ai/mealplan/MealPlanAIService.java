@@ -199,7 +199,17 @@ public class MealPlanAIService {
                 }
             }
 
-            mealsByDay.put(LocalDate.now().plusDays(day.dayLabel().length() - 1), dayMeals);
+            // Parse "Day N" label to compute the correct date offset (e.g. "Day 1" ->
+            // now+0, "Day 2" -> now+1)
+            LocalDate dayDate;
+            try {
+                int dayNumber = Integer.parseInt(day.dayLabel().replaceAll("[^0-9]", ""));
+                dayDate = LocalDate.now().plusDays(dayNumber - 1);
+            } catch (Exception e) {
+                log.warn("Could not parse day label '{}', using today", day.dayLabel());
+                dayDate = LocalDate.now();
+            }
+            mealsByDay.put(dayDate, dayMeals);
         }
 
         // Build day responses
