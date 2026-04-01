@@ -26,22 +26,28 @@ Main capabilities:
 - Goals, progress snapshots, and milestone tracking
 - BMI + wellness score analytics
 - Active-days (last 7d) activity indicator
-- AI insights with caching/fallback and response guardrails
+- AI-generated wellness insights with caching and response guardrails
 - Privacy preferences, data export, account deletion
+- Nutrition recipe explorer with search, protein filter, and difficulty ratings
+- AI meal plan generation with scaling and shopping list export
+- RAG-powered recipe recommendations using pgvector similarity search
+- Calorie trend charts with target-based color coding (daily/weekly/monthly)
 
 Bonus/extra functionality implemented:
 
 - Multi-provider account identity linking with email-collision guidance
 - AI guardrails (grounding, safety checks, anti-repeat, restriction checks)
+- OpenAI function calling for dynamic serving-size scaling in recipes
 - Demo data mode for end-to-end visualization testing
 - Application-layer at-rest protection for sensitive auth secrets
 
 ## Tech Stack
 
 - Backend: Java, Spring Boot, Spring Security, JPA/Hibernate, Flyway, PostgreSQL
-- Frontend: React, TypeScript, Vite
+- Frontend: React, TypeScript, Vite, Recharts
 - Auth: Local JWT + Auth0 resource-server validation for OAuth tokens
-- AI: OpenAI Responses API (optional), strict JSON schema output
+- AI: OpenAI Responses API with function calling (optional), strict JSON schema output
+- Vector search: pgvector (PostgreSQL extension) for RAG recipe similarity search
 - Email: JavaMailSender with SMTP/MailHog support
 - Containerization: Docker Compose for multi-service orchestration
 
