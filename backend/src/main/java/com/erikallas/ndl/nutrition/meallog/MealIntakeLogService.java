@@ -6,7 +6,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -55,7 +54,7 @@ public class MealIntakeLogService {
 
         var log = new MealIntakeLogEntity(UUID.randomUUID(), userId, mealPlanMealId, null, // Will be loaded from meal
                                                                                            // plan meal in future
-                LocalDate.now(ZoneId.of("UTC")), consumedTime, "MEAL", // Default meal type
+                now.toLocalDate(), consumedTime, "MEAL", // Default meal type
                 servings != null ? servings : BigDecimal.ONE, null, // Nutrition will be loaded from recipe
                 null, null, null, null, null, null, now, now);
 
@@ -96,8 +95,8 @@ public class MealIntakeLogService {
         BigDecimal fats = nutrition.fatsG() != null ? nutrition.fatsG().multiply(multiplier) : null;
 
         var log = new MealIntakeLogEntity(UUID.randomUUID(), userId, null, // No meal plan association
-                recipeId, LocalDate.now(ZoneId.of("UTC")), consumedTime, mealType != null ? mealType : recipe.meal(),
-                serving, calories, protein, carbs, fats, null, null, null, now, now);
+                recipeId, now.toLocalDate(), consumedTime, mealType != null ? mealType : recipe.meal(), serving,
+                calories, protein, carbs, fats, null, null, null, now, now);
 
         logger.debug("Logging meal from recipe: userId={}, recipeId={}, servings={}", userId, recipeId, servings);
 
@@ -126,7 +125,7 @@ public class MealIntakeLogService {
 
         var log = new MealIntakeLogEntity(UUID.randomUUID(), userId, null, // No meal plan association
                 null, // No recipe
-                LocalDate.now(ZoneId.of("UTC")), consumedTime, mealType, BigDecimal.ONE, // Custom meals are 1 serving
+                now.toLocalDate(), consumedTime, mealType, BigDecimal.ONE, // Custom meals are 1 serving
                 calories, protein, carbs, fats, mealName, notes, null, now, now);
 
         logger.debug("Logging custom meal: userId={}, mealName={}", userId, mealName);

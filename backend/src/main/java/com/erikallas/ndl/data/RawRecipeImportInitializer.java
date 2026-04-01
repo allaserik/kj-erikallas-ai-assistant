@@ -57,6 +57,8 @@ public class RawRecipeImportInitializer implements ApplicationRunner {
             return;
         }
 
+        log.info("Starting raw recipe import: source={}, limit={}, existing={}", SOURCE, limit, existing);
+
         Map<String, NutritionPer100g> nutritionByFood = loadNutritionDataset();
         Map<String, UUID> ingredientIdCache = new HashMap<>();
         int imported = 0;
