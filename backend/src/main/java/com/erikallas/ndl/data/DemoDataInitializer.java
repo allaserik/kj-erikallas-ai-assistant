@@ -299,7 +299,7 @@ public class DemoDataInitializer implements ApplicationRunner {
     private void createMealPlans(UUID userId, OffsetDateTime now) {
         // Get available recipes from the catalog
         List<RecipeCatalogModels.RecipeListItem> recipes = recipeQueryRepo
-                .search(new RecipeCatalogModels.RecipeSearchFilters(null, null, null, null, null, null, 100));
+                .search(new RecipeCatalogModels.RecipeSearchFilters(null, null, null, null, null, null, null, 100));
 
         if (recipes.isEmpty()) {
             log.warn("No recipes available in catalog, skipping meal plans");
@@ -346,7 +346,7 @@ public class DemoDataInitializer implements ApplicationRunner {
     private void createMealLogs(UUID userId, OffsetDateTime now) {
         // Get available recipes from catalog for variation
         List<RecipeCatalogModels.RecipeListItem> recipes = recipeQueryRepo
-                .search(new RecipeCatalogModels.RecipeSearchFilters(null, null, null, null, null, null, 100));
+                .search(new RecipeCatalogModels.RecipeSearchFilters(null, null, null, null, null, null, null, 100));
 
         if (recipes.isEmpty()) {
             log.warn("No recipes available, skipping meal logs");

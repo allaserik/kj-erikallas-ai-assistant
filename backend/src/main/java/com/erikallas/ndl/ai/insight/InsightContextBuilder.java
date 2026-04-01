@@ -10,7 +10,13 @@ import com.erikallas.ndl.health.profile.HealthProfileService;
 import com.erikallas.ndl.health.summary.HealthSummaryService;
 import com.erikallas.ndl.health.weight.WeightEntryEntity;
 import com.erikallas.ndl.health.weight.WeightEntryRepository;
+import com.erikallas.ndl.nutrition.meallog.MealIntakeLogEntity;
+import com.erikallas.ndl.nutrition.meallog.MealIntakeLogService;
+import com.erikallas.ndl.nutrition.preferences.NutritionPreferencesService;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,16 +45,21 @@ public class InsightContextBuilder {
     private final GoalProgressRepository progressRepo;
     private final HealthSummaryService summaryService;
     private final ActivityCheckinRepository activityCheckinRepository;
+    private final MealIntakeLogService mealIntakeLogService;
+    private final NutritionPreferencesService nutritionPreferencesService;
 
     public InsightContextBuilder(HealthProfileService profileService, WeightEntryRepository weightRepo,
             GoalRepository goalRepo, GoalProgressRepository progressRepo, HealthSummaryService summaryService,
-            ActivityCheckinRepository activityCheckinRepository) {
+            ActivityCheckinRepository activityCheckinRepository, MealIntakeLogService mealIntakeLogService,
+            NutritionPreferencesService nutritionPreferencesService) {
         this.profileService = profileService;
         this.weightRepo = weightRepo;
         this.goalRepo = goalRepo;
         this.progressRepo = progressRepo;
         this.summaryService = summaryService;
         this.activityCheckinRepository = activityCheckinRepository;
+        this.mealIntakeLogService = mealIntakeLogService;
+        this.nutritionPreferencesService = nutritionPreferencesService;
     }
 
     /**
@@ -102,6 +113,9 @@ public class InsightContextBuilder {
 
         // Wellness summary
         addWellnessSection(context, profile);
+
+        // Nutrition intake (last 7 days)
+        addNutritionSection(context, userId);
 
         return context;
     }
@@ -205,6 +219,15 @@ public class InsightContextBuilder {
         if (!wellness.isEmpty()) {
             sb.append("WELLNESS SUMMARY:\n");
             wellness.forEach((k, v) -> sb.append("  ").append(k).append(": ").append(v).append("\n"));
+            sb.append("\n");
+        }
+
+        // Nutrition intake
+        Map<?, ?> nutrition = (Map<?, ?>) context.getOrDefault("nutrition_intake", new HashMap<>());
+        if (!nutrition.isEmpty()) {
+            sb.append("NUTRITION INTAKE (last 7 days):\n");
+            nutrition.forEach((k, v) -> sb.append("  ").append(k).append(": ").append(v).append("\n"));
+            sb.append("\n");
         }
 
         sb.append("\n=== COACHING TASK ===\n");
@@ -298,9 +321,7 @@ public class InsightContextBuilder {
         var recentActivity = activityCheckinRepository.findTop100ByUserIdOrderByCheckinAtDesc(profile.getUserId());
         long activeDaysLast7 = recentActivity.stream()
                 .filter(a -> a.getCheckinAt() != null && !a.getCheckinAt().isBefore(OffsetDateTime.now().minusDays(7)))
-                .map(a -> a.getCheckinAt().toLocalDate())
-                .distinct()
-                .count();
+                .map(a -> a.getCheckinAt().toLocalDate()).distinct().count();
         activity.put("active_days_last_7d", activeDaysLast7);
 
         var timeline = recentActivity.stream().limit(10).map(a -> {
@@ -341,6 +362,66 @@ public class InsightContextBuilder {
         }
 
         context.put("dietary", dietary);
+    }
+
+    private void addNutritionSection(Map<String, Object> context, UUID userId) {
+        try {
+            var prefs = nutritionPreferencesService.getOrCreateWithPrefill(userId);
+            LocalDate today = LocalDate.now();
+            LocalDate sevenDaysAgo = today.minusDays(6);
+            List<MealIntakeLogEntity> meals = mealIntakeLogService.getMealsForDateRange(userId, sevenDaysAgo, today);
+
+            if (meals.isEmpty()) {
+                return;
+            }
+
+            Map<String, Object> nutrition = new LinkedHashMap<>();
+            nutrition.put("calorie_target_kcal", prefs.calorieTargetKcal());
+            if (prefs.proteinTargetG() != null)
+                nutrition.put("protein_target_g", prefs.proteinTargetG());
+            if (prefs.carbsTargetG() != null)
+                nutrition.put("carbs_target_g", prefs.carbsTargetG());
+            if (prefs.fatsTargetG() != null)
+                nutrition.put("fats_target_g", prefs.fatsTargetG());
+
+            // Aggregate by day
+            Map<LocalDate, BigDecimal[]> dailyTotals = new LinkedHashMap<>();
+            for (MealIntakeLogEntity meal : meals) {
+                if (meal.getDeletedAt() != null)
+                    continue;
+                LocalDate date = meal.getConsumedDate();
+                dailyTotals.putIfAbsent(date,
+                        new BigDecimal[] { BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO });
+                BigDecimal[] totals = dailyTotals.get(date);
+                if (meal.getCaloriesKcal() != null)
+                    totals[0] = totals[0].add(meal.getCaloriesKcal());
+                if (meal.getProteinG() != null)
+                    totals[1] = totals[1].add(meal.getProteinG());
+                if (meal.getCarbsG() != null)
+                    totals[2] = totals[2].add(meal.getCarbsG());
+                if (meal.getFatsG() != null)
+                    totals[3] = totals[3].add(meal.getFatsG());
+            }
+
+            nutrition.put("days_with_logs", dailyTotals.size());
+            BigDecimal avgCalories = dailyTotals.values().stream().map(t -> t[0])
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .divide(BigDecimal.valueOf(dailyTotals.size()), 0, java.math.RoundingMode.HALF_UP);
+            nutrition.put("avg_daily_calories_kcal", avgCalories);
+            int target = prefs.calorieTargetKcal();
+            int deficit = target - avgCalories.intValue();
+            nutrition.put("avg_daily_calorie_deficit", deficit > 0 ? deficit : 0);
+            nutrition.put("avg_daily_calorie_surplus", deficit < 0 ? -deficit : 0);
+
+            // Days in deficit vs surplus
+            long daysInDeficit = dailyTotals.values().stream().filter(t -> t[0].intValue() < target).count();
+            nutrition.put("days_in_deficit_last_7d", daysInDeficit);
+            nutrition.put("days_in_surplus_last_7d", dailyTotals.size() - daysInDeficit);
+
+            context.put("nutrition_intake", nutrition);
+        } catch (Exception e) {
+            // Nutrition context is optional — don't fail the whole insight
+        }
     }
 
     private void addActiveGoalsSection(Map<String, Object> context, List<GoalEntity> goals) {

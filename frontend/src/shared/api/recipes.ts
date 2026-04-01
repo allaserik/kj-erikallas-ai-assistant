@@ -58,6 +58,7 @@ export type RecipeSearchParams = {
     cuisine?: string;
     meal?: string;
     dietaryTag?: string;
+    allergyTag?: string;
     maxTimeMinutes?: number;
     maxCaloriesKcal?: number;
     limit?: number;
@@ -69,6 +70,7 @@ function toSearchQuery(params: RecipeSearchParams): string {
     if (params.cuisine) q.set("cuisine", params.cuisine);
     if (params.meal) q.set("meal", params.meal);
     if (params.dietaryTag) q.set("dietary_tag", params.dietaryTag);
+    if (params.allergyTag) q.set("allergy_tag", params.allergyTag);
     if (params.maxTimeMinutes != null) q.set("max_time_minutes", String(params.maxTimeMinutes));
     if (params.maxCaloriesKcal != null) q.set("max_calories_kcal", String(params.maxCaloriesKcal));
     if (params.limit != null) q.set("limit", String(params.limit));

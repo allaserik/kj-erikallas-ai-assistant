@@ -1,3 +1,4 @@
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { DailySummary } from "../../../shared/types";
 
 /**
@@ -97,6 +98,36 @@ export function NutritionSummaryCard({ summary }: { summary: DailySummary }) {
                     </div>
                 ))}
             </div>
+
+            {/* Macronutrient Pie Chart */}
+            {summary.totalMeals > 0 && (summary.protein.actual > 0 || summary.carbs.actual > 0 || summary.fats.actual > 0) && (
+                <div className="mb-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-2">Macronutrient Breakdown</h3>
+                    <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                            <Pie
+                                data={[
+                                    { name: "Protein", value: Math.max(0, summary.protein.actual) },
+                                    { name: "Carbs", value: Math.max(0, summary.carbs.actual) },
+                                    { name: "Fats", value: Math.max(0, summary.fats.actual) },
+                                ]}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={50}
+                                outerRadius={80}
+                                paddingAngle={2}
+                                dataKey="value"
+                            >
+                                <Cell fill="#3b82f6" />
+                                <Cell fill="#f59e0b" />
+                                <Cell fill="#ef4444" />
+                            </Pie>
+                            <Tooltip formatter={(value: number) => `${value.toFixed(1)} g`} />
+                            <Legend />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+            )}
 
             {/* No Meals Fallback */}
             {summary.totalMeals === 0 && (

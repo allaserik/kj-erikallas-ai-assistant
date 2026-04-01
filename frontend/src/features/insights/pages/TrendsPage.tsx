@@ -11,6 +11,10 @@ import { getActivityHistory } from "../../../shared/api/activity";
 import { WellnessEvolutionChart } from "../components/WellnessEvolutionChart";
 import { WellnessComponentsStackedChart } from "../components/WellnessComponentsStackedChart";
 import { ActivityHeatmap } from "../components/ActivityHeatmap";
+import { NutritionTrendChart } from "../../nutrition/components/NutritionTrendChart";
+import { InsightCard } from "../../dashboard/components/InsightCard";
+import { getLatestInsight } from "../../../shared/api/insights";
+import { Card, CardBody } from "../../../shared/ui/Card";
 
 export default function TrendsPage() {
     const [range, setRange] = useState<"30" | "90" | "all">("90");
@@ -30,6 +34,12 @@ export default function TrendsPage() {
     const activityDates = (activityQ.data?.content || []).map((item) =>
         new Date(item.checkinAt).toISOString().split("T")[0]
     );
+    const insightQ = useAuthedQuery(
+        `insight-trends`,
+        (token: string) => getLatestInsight(token),
+        isAuthenticated
+    );
+    const daysToShow = range === "30" ? 30 : range === "90" ? 90 : 180;
 
     return (
         <div className="space-y-4 pb-32 md:pb-4">
@@ -114,6 +124,22 @@ export default function TrendsPage() {
                         </div>
                     )}
                 </>
+            )}
+
+            {/* Nutrition Trends */}
+            <Card>
+                <CardBody>
+                    <div className="mb-4">
+                        <h2 className="text-lg font-semibold text-slate-900">Nutrition Trends</h2>
+                        <p className="text-sm text-slate-600 mt-1">Caloric intake vs. target — daily, weekly & monthly view</p>
+                    </div>
+                    <NutritionTrendChart daysToShow={daysToShow} />
+                </CardBody>
+            </Card>
+
+            {/* AI Insights */}
+            {insightQ.data && (
+                <InsightCard insight={insightQ.data} />
             )}
         </div>
     );

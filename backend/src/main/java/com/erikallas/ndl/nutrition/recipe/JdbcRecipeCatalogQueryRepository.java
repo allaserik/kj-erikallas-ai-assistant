@@ -27,6 +27,7 @@ public class JdbcRecipeCatalogQueryRepository implements RecipeCatalogQueryRepos
         String cuisine = normalizeBlank(filters.cuisine());
         String meal = normalizeBlank(filters.meal());
         String dietaryTag = normalizeBlank(filters.dietaryTag());
+        String allergyTag = normalizeBlank(filters.allergyTag());
         Integer maxTimeMinutes = filters.maxTimeMinutes();
         var maxCaloriesKcal = filters.maxCaloriesKcal();
 
@@ -75,8 +76,7 @@ public class JdbcRecipeCatalogQueryRepository implements RecipeCatalogQueryRepos
                 LEFT JOIN nutrition n ON n.recipe_id = r.id
                 WHERE 1 = 1
                 """);
-        MapSqlParameterSource params = new MapSqlParameterSource()
-                .addValue("limit", limit);
+        MapSqlParameterSource params = new MapSqlParameterSource().addValue("limit", limit);
         if (q != null) {
             query.append("""
                     AND (
@@ -109,6 +109,18 @@ public class JdbcRecipeCatalogQueryRepository implements RecipeCatalogQueryRepos
                     )
                     """);
             params.addValue("dietaryTag", dietaryTag);
+        }
+        if (allergyTag != null) {
+            // Filter to only recipes safe for this allergy (must carry the "-free" safe
+            // tag)
+            query.append("""
+                    AND EXISTS (
+                        SELECT 1
+                        FROM unnest(r.dietary_tags) AS tag
+                        WHERE tag = CAST(:allergyTag AS text)
+                    )
+                    """);
+            params.addValue("allergyTag", allergyTag);
         }
         if (maxTimeMinutes != null) {
             query.append("AND r.time_minutes <= :maxTimeMinutes\n");
@@ -178,19 +190,10 @@ public class JdbcRecipeCatalogQueryRepository implements RecipeCatalogQueryRepos
             if (!rs.next()) {
                 return null;
             }
-            return new RecipeDetailHeader(
-                    (UUID) rs.getObject("id"),
-                    rs.getString("title"),
-                    rs.getString("cuisine"),
-                    rs.getString("meal"),
-                    rs.getInt("servings"),
-                    rs.getString("summary"),
-                    rs.getInt("time_minutes"),
-                    rs.getString("difficulty_level"),
-                    parseTextArray(rs.getArray("dietary_tags")),
-                    rs.getString("source"),
-                    rs.getString("img"),
-                    toNutritionSummary(rs));
+            return new RecipeDetailHeader((UUID) rs.getObject("id"), rs.getString("title"), rs.getString("cuisine"),
+                    rs.getString("meal"), rs.getInt("servings"), rs.getString("summary"), rs.getInt("time_minutes"),
+                    rs.getString("difficulty_level"), parseTextArray(rs.getArray("dietary_tags")),
+                    rs.getString("source"), rs.getString("img"), toNutritionSummary(rs));
         });
 
         if (header == null) {
@@ -227,11 +230,9 @@ public class JdbcRecipeCatalogQueryRepository implements RecipeCatalogQueryRepos
                 LEFT JOIN ingredient_nutrition inut ON inut.ingredient_id = ri.ingredient_id
                 WHERE ri.recipe_id = :recipeId
                 ORDER BY ri.sort_order ASC, ri.ingredient_name ASC
-                """, Map.of("recipeId", recipeId), (rs, rowNum) -> new RecipeCatalogModels.RecipeIngredientItem(
-                        rs.getObject("ingredient_id", UUID.class),
-                        rs.getString("ingredient_name"),
-                        rs.getString("unit"),
-                        rs.getBigDecimal("quantity"),
+                """, Map.of("recipeId", recipeId),
+                (rs, rowNum) -> new RecipeCatalogModels.RecipeIngredientItem(rs.getObject("ingredient_id", UUID.class),
+                        rs.getString("ingredient_name"), rs.getString("unit"), rs.getBigDecimal("quantity"),
                         toNutritionSummary(rs)));
 
         List<RecipeCatalogModels.RecipePreparationStep> steps = jdbc.query("""
@@ -243,48 +244,25 @@ public class JdbcRecipeCatalogQueryRepository implements RecipeCatalogQueryRepos
                 FROM recipe_steps
                 WHERE recipe_id = :recipeId
                 ORDER BY step_number ASC
-                """, Map.of("recipeId", recipeId), (rs, rowNum) -> new RecipeCatalogModels.RecipePreparationStep(
-                        rs.getInt("step_number"),
-                        rs.getString("step"),
-                        rs.getString("description"),
+                """, Map.of("recipeId", recipeId),
+                (rs, rowNum) -> new RecipeCatalogModels.RecipePreparationStep(rs.getInt("step_number"),
+                        rs.getString("step"), rs.getString("description"),
                         parseTextArray(rs.getArray("ingredient_refs"))));
 
-        return new RecipeCatalogModels.RecipeDetail(
-                header.id(),
-                header.title(),
-                header.cuisine(),
-                header.meal(),
-                header.servings(),
-                header.summary(),
-                header.timeMinutes(),
-                header.difficultyLevel(),
-                header.dietaryTags(),
-                header.source(),
-                header.img(),
-                ingredients,
-                steps,
-                header.nutrition());
+        return new RecipeCatalogModels.RecipeDetail(header.id(), header.title(), header.cuisine(), header.meal(),
+                header.servings(), header.summary(), header.timeMinutes(), header.difficultyLevel(),
+                header.dietaryTags(), header.source(), header.img(), ingredients, steps, header.nutrition());
     }
 
     private RecipeCatalogModels.RecipeListItem toListItem(ResultSet rs) throws SQLException {
-        return new RecipeCatalogModels.RecipeListItem(
-                rs.getObject("id", UUID.class),
-                rs.getString("title"),
-                rs.getString("cuisine"),
-                rs.getString("meal"),
-                rs.getInt("servings"),
-                rs.getInt("time_minutes"),
-                rs.getString("difficulty_level"),
-                parseTextArray(rs.getArray("dietary_tags")),
-                toNutritionSummary(rs));
+        return new RecipeCatalogModels.RecipeListItem(rs.getObject("id", UUID.class), rs.getString("title"),
+                rs.getString("cuisine"), rs.getString("meal"), rs.getInt("servings"), rs.getInt("time_minutes"),
+                rs.getString("difficulty_level"), parseTextArray(rs.getArray("dietary_tags")), toNutritionSummary(rs));
     }
 
     private RecipeCatalogModels.RecipeNutritionSummary toNutritionSummary(ResultSet rs) throws SQLException {
-        return new RecipeCatalogModels.RecipeNutritionSummary(
-                rs.getBigDecimal("calories_kcal"),
-                rs.getBigDecimal("protein_g"),
-                rs.getBigDecimal("carbs_g"),
-                rs.getBigDecimal("fats_g"));
+        return new RecipeCatalogModels.RecipeNutritionSummary(rs.getBigDecimal("calories_kcal"),
+                rs.getBigDecimal("protein_g"), rs.getBigDecimal("carbs_g"), rs.getBigDecimal("fats_g"));
     }
 
     private List<String> parseTextArray(Array sqlArray) throws SQLException {
@@ -316,18 +294,8 @@ public class JdbcRecipeCatalogQueryRepository implements RecipeCatalogQueryRepos
         return Math.max(min, Math.min(max, value));
     }
 
-    private record RecipeDetailHeader(
-            UUID id,
-            String title,
-            String cuisine,
-            String meal,
-            int servings,
-            String summary,
-            int timeMinutes,
-            String difficultyLevel,
-            List<String> dietaryTags,
-            String source,
-            String img,
+    private record RecipeDetailHeader(UUID id, String title, String cuisine, String meal, int servings, String summary,
+            int timeMinutes, String difficultyLevel, List<String> dietaryTags, String source, String img,
             RecipeCatalogModels.RecipeNutritionSummary nutrition) {
     }
 }

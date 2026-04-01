@@ -65,7 +65,7 @@ public class RAGRetrieverService {
             String keywordQuery = (mealType != null && query.equalsIgnoreCase(mealType.trim())) ? null : query;
 
             // Create search filters for initial filtering (keyword + meal type)
-            RecipeSearchFilters filters = new RecipeSearchFilters(keywordQuery, null, mealType, null, null, null,
+            RecipeSearchFilters filters = new RecipeSearchFilters(keywordQuery, null, mealType, null, null, null, null,
                     Math.min(topK * 3, 100) // Get more results for semantic re-ranking
             );
 
