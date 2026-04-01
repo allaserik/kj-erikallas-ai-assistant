@@ -6,12 +6,8 @@ Wellness tracking app with health profile collection, goal tracking, wellness sc
 
 - [Project Overview](#project-overview)
 - [Tech Stack](#tech-stack)
-- [Setup And Installation](#setup-and-installation)
-- [Run Modes](#run-modes)
-- [Demo Data Details](#demo-data-details)
-- [Demo Troubleshooting](#demo-troubleshooting)
+- [Quick Start](#quick-start)
 - [Usage Guide](#usage-guide)
-- [5-Minute Overview](#5-minute-overview)
 - [Local Development](#local-development)
 - [Environment Variables](#environment-variables)
 - [AI Insights Notes](#ai-insights-notes)
@@ -55,330 +51,129 @@ Bonus/extra functionality implemented:
 [Nutrition Data from Kaggle](https://www.kaggle.com/code/snowholt/chefbelle-an-ai-kitchen-assistant?select=cleaned_nutrition_dataset.csv)
 Activity and weight data generated with realistic trends and noise based on common patterns in health tracking datasets.
 
-## Setup And Installation
+## Quick Start
 
-1. Copy env template:
+Two security keys are required. Generate them once and fill both into your `.env`:
 
 ```bash
-cp .env.example .env
+openssl rand -base64 48   # → APP_TOKEN_PEPPER
+openssl rand -base64 48   # → APP_DATA_ENCRYPTION_KEY
 ```
 
-Quick alternatives:
-
-- Demo template: `cp .env.demo.example .env`
-- Clean template: `cp .env.clean.example .env`
-
-2. Set secure values in `.env`:
-
-- `APP_TOKEN_PEPPER`
-- `APP_DATA_ENCRYPTION_KEY`
-
-Generate them with:
+### Demo — pre-seeded data + MailHog email
 
 ```bash
-openssl rand -base64 48
-openssl rand -base64 48
-```
-
-Use first output as `APP_TOKEN_PEPPER`, second as `APP_DATA_ENCRYPTION_KEY`.
-
-3. Start with one command:
-
-```bash
+cp .env.demo.example .env
+# Edit .env: set APP_TOKEN_PEPPER and APP_DATA_ENCRYPTION_KEY
 docker compose up -d --build
 ```
-
-## Run Modes
-
-### Demo (Recommended First)
-
-This mode is optimized for demo purposes:
-
-- pre-seeded data (`DEMO_MODE=true`)
-- frontend demo login mode
-- real email flow captured in MailHog inbox UI (verification/reset links visible)
-
-Run:
-
-```bash
-DEMO_MODE=true VITE_DEMO_MODE=true APP_EMAIL_ENABLED=true docker compose up -d --build
-```
-
-Open:
 
 - Frontend: `http://localhost:5173`
-- Swagger: `http://localhost:8080/swagger-ui/index.html`
-- MailHog inbox UI: `http://localhost:8025`
+- Log in: `demo@example.com` / `demo@example.com`
+- Email inbox (verification, reset links): `http://localhost:8025`
 
-Demo credentials:
-
-- `demo@example.com` / `demo@example.com`
-
-Read Docker logs for AI insight generation details and email payloads. From project root (./numbers-dont-lie):
-
-All services, live stream:
+### Clean — empty database
 
 ```bash
-docker compose logs -f
-```
-
-Specific services:
-
-```bash
-docker compose logs -f postgres
-docker compose logs -f backend
-docker compose logs -f frontend
-```
-
-Last 200 lines only:
-
-```bash
-docker compose logs --tail=200 postgres
-docker compose logs --tail=200 backend
-docker compose logs --tail=200 frontend
-```
-
-With timestamps:
-
-```bash
-docker compose logs -f -t backend
-```
-
-If service names differ, list them:
-
-```bash
-docker compose ps
-```
-
-## Demo Data Details
-
-Seeded demo account:
-
-- Email: `demo@example.com`
-- Password: `demo@example.com`
-- User ID: `00000000-0000-0000-0000-000000000001`
-
-Seeded data includes:
-
-- Health profile with realistic baseline values
-- Active goal(s) and goal progress history
-- Historical weight entries for trend visualization
-- Activity check-ins for heatmap/timeline testing
-
-Why this helps:
-
-- Lets reviewers immediately validate dashboard/trends behavior
-- Avoids manual data entry before testing assignment criteria
-- Makes AI insight context richer during demos
-
-Reset demo database:
-
-```bash
-docker compose down -v
-DEMO_MODE=true VITE_DEMO_MODE=true APP_EMAIL_ENABLED=true docker compose up -d --build
-```
-
-## Demo Troubleshooting
-
-Backend starts slower than frontend. Sometimes have to wait a few seconds. If frontend loads before backend, you may see errors or missing data until backend is ready.
-
-Demo tab not visible:
-
-- Ensure `VITE_DEMO_MODE=true`
-- Rebuild frontend: `docker compose up -d --build`
-
-Demo user/data not appearing:
-
-- Ensure `DEMO_MODE=true`
-- Reset volumes and start again (`docker compose down -v`)
-
-Email verification/reset not visible in inbox:
-
-- Ensure `APP_EMAIL_ENABLED=true`
-- Ensure `MAIL_HOST=mailhog`, `MAIL_PORT=1025`
-- Open `http://localhost:8025`
-
-### Clean Mode (No Demo Seed Data)
-
-Use this when you want an empty database and non-demo UX:
-
-```bash
-DEMO_MODE=false VITE_DEMO_MODE=false APP_EMAIL_ENABLED=false docker compose up -d --build
-```
-
-In this mode, email verification/reset content is logged to backend console unless you configure SMTP and enable `APP_EMAIL_ENABLED=true`.
-
-### Default One-Line Run (Docker)
-
-```bash
+cp .env.clean.example .env
+# Edit .env: set APP_TOKEN_PEPPER and APP_DATA_ENCRYPTION_KEY
 docker compose up -d --build
 ```
 
-Open:
+- Frontend: `http://localhost:5173` — register a new account
+- Email verification text is logged to backend console (no mail server needed)
 
-- Frontend: `http://localhost:5173`
-- Swagger: `http://localhost:8080/swagger-ui/index.html`
-- MailHog (if used): `http://localhost:8025`
-
-Stop:
+### Stop / Reset
 
 ```bash
-docker compose down
+docker compose down       # stop all services
+docker compose down -v    # stop and wipe database volume
 ```
 
-Reset database:
-
-```bash
-docker compose down -v
-docker compose up -d --build
-```
+> Backend starts slower than frontend — wait a few seconds after `up` before the API is ready.
 
 ## Usage Guide
 
-Typical user flow:
+Start with demo mode for the fastest path to a populated app. Use `demo@example.com` / `demo@example.com` to skip registration.
 
-1. Sign up/login (email/password, Google, or GitHub)
-2. Verify email (for local email/password auth)
-3. Complete health profile
-4. Add weight and activity check-ins
-5. Create an active goal
-6. View dashboard (BMI, wellness score, active days, summaries, AI insight)
-7. View trends (weight line, wellness evolution, component breakdown, heatmap)
-8. Use settings for privacy consent, 2FA, export, and account deletion
+### Core flow
 
-## 5-Minute Overview
+1. **Sign up / log in** — email/password, Google, or GitHub. Verify email when prompted.
+2. **Health profile** — fill in baseline stats (age, weight, height, activity level, dietary preferences).
+3. **Check-ins** — add weight and activity entries; they appear in the timeline immediately.
+4. **Goals** — create an active goal, add progress snapshots, and track milestones.
+5. **Dashboard** — BMI, wellness score, active-days indicator, AI insight, weekly/monthly summary cards.
+6. **Trends** — weight chart, wellness evolution, component breakdown, activity heatmap; switch date ranges.
+7. **Nutrition** — explore recipes, filter by protein/difficulty, generate a meal plan, get a shopping list.
+8. **Settings** — privacy consent (gates AI insight), 2FA setup, data export, account deletion.
 
-Use this exact flow for fast requirement verification:
+### Reviewer fast-path (5 minutes)
 
-1. Run app and log in.
-2. Toggle consent in Settings and confirm AI insight gating on Dashboard.
-3. Save Health Profile updates and verify success without page reload.
-4. Add one weight + one activity check-in; confirm timeline updates.
-5. Open Dashboard and Trends:
-   - Dashboard: BMI, wellness score, active days (7d), goal, insight, weekly/monthly cards
-   - Trends: weight chart, wellness charts, activity heatmap, range switch
-6. Run data export and confirm historical JSON payload.
+Use demo mode so data is already populated:
+
+1. Log in as `demo@example.com` and open the **Dashboard** — verify BMI, wellness score, insight, and summary cards.
+2. Go to **Settings → Privacy** — toggle AI consent off; confirm insight disappears on Dashboard, toggle back on.
+3. Go to **Health Profile** — update a field and save; confirm inline success without page reload.
+4. Add one **weight** entry and one **activity** entry; confirm both appear in the timeline.
+5. Open **Trends** — check weight chart, wellness charts, activity heatmap, and switch the date range.
+6. Open **Nutrition → Recipes** — search and filter; open a recipe for detail view.
+7. Open **Nutrition → Meal Plan** — generate a plan and view the shopping list.
+8. Go to **Settings → Export** — trigger export and confirm the historical JSON payload downloads.
 
 ## Local Development
 
-1. Start database only:
+Start only the database using the infra compose file, then run backend and frontend natively.
+
+The frontend also needs its own `frontend/.env.local` for Auth0 OAuth (Google/GitHub login). Copy the template and fill in your Auth0 tenant details:
 
 ```bash
+cp frontend/.env.local.example frontend/.env.local
+# Edit frontend/.env.local: set VITE_AUTH0_DOMAIN, VITE_AUTH0_CLIENT_ID, VITE_AUTH0_AUDIENCE
+```
+
+Email/password login works without Auth0 credentials — skip this step if you only need local auth.
+
+### With Demo Data
+
+```bash
+cp .env.demo.example .env
+# Edit .env: set APP_TOKEN_PEPPER and APP_DATA_ENCRYPTION_KEY
+cp frontend/.env.local.example frontend/.env.local
 docker compose -f ./infra/docker-compose.yml --env-file ./.env up -d
+cd backend && ./mvnw spring-boot:run
+# in a second terminal:
+cd frontend && npm install && npm run dev
 ```
 
-2. Start backend:
+### Clean (empty database)
 
 ```bash
-cd backend
-./mvnw -q -DskipTests compile
-./mvnw spring-boot:run
-```
-
-3. Start frontend:
-
-```bash
-cd frontend
-npm install
-npm run dev
+cp .env.clean.example .env
+# Edit .env: set APP_TOKEN_PEPPER and APP_DATA_ENCRYPTION_KEY
+cp frontend/.env.local.example frontend/.env.local
+docker compose -f ./infra/docker-compose.yml --env-file ./.env up -d
+cd backend && ./mvnw spring-boot:run
+# in a second terminal:
+cd frontend && npm install && npm run dev
 ```
 
 ## Environment Variables
 
-Use root `.env` for all normal runs.
+Config lives in the root `.env`. Two ready-made templates cover both modes:
 
-Important behavior:
+| Template             | Mode  | Email       | Seed data                    |
+| -------------------- | ----- | ----------- | ---------------------------- |
+| `.env.demo.example`  | Demo  | MailHog     | Yes — demo account + history |
+| `.env.clean.example` | Clean | Console log | No                           |
 
-- `docker compose` automatically reads `.env` from project root.
-- Inline values override `.env` for that command only.
-- For submission/one-line run, only root `.env` is required.
-
-### Demo vs Clean Env
-
-| Variable            | Demo value | Clean value            | Notes                                |
-| ------------------- | ---------- | ---------------------- | ------------------------------------ |
-| `DEMO_MODE`         | `true`     | `false`                | Backend demo seed data               |
-| `VITE_DEMO_MODE`    | `true`     | `false`                | Frontend demo login tab              |
-| `APP_EMAIL_ENABLED` | `true`     | `false` or `true`      | `true` sends via SMTP/MailHog        |
-| `MAIL_HOST`         | `mailhog`  | `mailhog` or SMTP host | Docker default uses MailHog          |
-| `MAIL_PORT`         | `1025`     | `1025` or SMTP port    | MailHog SMTP port                    |
-| `OPENAI_API_KEY`    | optional   | optional               | If absent, app uses fallback insight |
-
-### Core Keys Checklist
-
-- `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`
-- `APP_TOKEN_PEPPER`
-- `APP_DATA_ENCRYPTION_KEY`
-- `VITE_AUTH0_AUDIENCE`
-- `OPENAI_API_KEY` (optional), `OPENAI_MODEL` (optional)
-- `APP_EMAIL_*` and `MAIL_*` (for real email flow)
-
-### Email Testing Setup
-
-Reviewer-friendly local setup with MailHog:
-
-1. Set `APP_EMAIL_ENABLED=true`
-2. Keep `MAIL_HOST=mailhog` and `MAIL_PORT=1025` (docker compose defaults)
-3. Run `docker compose up -d --build`
-4. Open `http://localhost:8025` to see verification and password-reset emails
-
-If `APP_EMAIL_ENABLED=false`, email payloads are intentionally logged to backend console for local testing only.
-
-### Encryption In Transit (HTTPS)
-
-You can run backend HTTPS locally using a PKCS12 keystore:
-
-1. Generate a local keystore (example):
+Both templates have inline comments. Only two values require manual setup:
 
 ```bash
-keytool -genkeypair \
-  -alias tomcat \
-  -keyalg RSA \
-  -keysize 2048 \
-  -storetype PKCS12 \
-  -keystore backend/local-dev.p12 \
-  -validity 3650 \
-  -storepass changeit \
-  -dname "CN=localhost"
+openssl rand -base64 48   # → APP_TOKEN_PEPPER
+openssl rand -base64 48   # → APP_DATA_ENCRYPTION_KEY
 ```
 
-2. Set env vars:
-
-- `SERVER_SSL_ENABLED=true`
-- `SERVER_SSL_KEY_STORE=file:./local-dev.p12` (or absolute path)
-- `SERVER_SSL_KEY_STORE_PASSWORD=...`
-- `SERVER_SSL_KEY_STORE_TYPE=PKCS12`
-- `SERVER_SSL_KEY_ALIAS=tomcat`
-
-When enabled, backend traffic is encrypted over HTTPS.
-
-### Encryption At Rest
-
-Application-layer at-rest encryption is enabled for sensitive health fields:
-
-- `health_profiles.dietary_preferences` (encrypted JSON text)
-- `health_profiles.dietary_restrictions` (encrypted JSON text)
-- `health_profiles.fitness_assessment` (encrypted JSON text)
-- `weight_entries.note` (encrypted text)
-- `activity_checkins.note` (encrypted text)
-
-Encryption key material:
-
-- `APP_DATA_ENCRYPTION_KEY`
-
-If running backend directly and loading `.env` into shell:
-
-```bash
-set -a
-source .env
-set +a
-```
-
-### Which `.env` Files Are Needed?
-
-- Required: `.env` (root)
-- Template/reference: `.env.example`
-- Ready presets: `.env.demo.example`, `.env.clean.example`
+`OPENAI_API_KEY` is optional — all AI features fall back gracefully when absent.
 
 ## AI Insights Notes
 
@@ -436,46 +231,57 @@ The same function-calling pathway is used when a user scales a recipe to a diffe
 
 ## Further Development Ideas
 
-Based on the current implementation, these are practical next steps:
+Practical next steps grouped by area:
 
-1. Security and Compliance
+### 1. Security and Compliance
 
 - Move from app-layer encryption only to full infrastructure encryption-at-rest (managed volume encryption + key rotation policy).
 - Run backend strictly behind HTTPS in all environments and add HSTS/reverse-proxy hardening.
-- Add structured audit trail for sensitive actions (consent changes, exports, account deletion, security settings).
+- Add structured audit trail for sensitive data actions (consent changes, exports, account deletion, security settings).
 
-2. AI Quality and Evaluation
+### 2. AI Quality and Evaluation
 
-- Add an internal evaluation suite with scenario-based scoring for relevance, safety, and goal alignment.
-- Add stricter domain validators (exercise contraindications, nutrition restriction ontology, unsafe advice classes).
-- Support model fallback strategy by tier (primary model -> cheaper model -> deterministic safe template).
+- Add an internal evaluation suite with scenario-based scoring for AI insight relevance, safety, and goal alignment.
+- Add stricter domain validators for nutrition (restriction-ingredient ontology, unsafe advice classes, implausible macro values).
+- Support model fallback strategy by tier: primary model → cheaper model → deterministic template.
+- Add embedding refresh pipeline so newly imported recipes are auto-embedded without a full re-import.
 
-3. Goals and Progress
+### 3. Meal Planning and Nutrition
 
-- Add auto-progress snapshots for weight goals on each weight check-in (similar to activity goal auto-progress).
-- Add projected completion date per active goal using trend slope and confidence range.
-- Add per-goal timeline views (milestones + notes + check-in correlation).
+- Add user feedback on generated meal plans (thumbs up/down per meal) to surface preference signals for future plan generation.
+- Build a community-driven recipe import flow: users can submit recipes that get validated, embedded, and added to the shared catalog.
+- Extend nutritional tracking to micronutrients (vitamins, minerals) using the existing per-100g ingredient dataset as a base.
+- Add weekly nutrition summaries: average macros vs. targets, best and worst days, trend direction — as a scheduled AI-generated report.
+- Add recipe image management: either user-uploaded images or AI-generated thumbnails to replace the current "no image" placeholder.
 
-4. Analytics and Visualization
+### 4. Goals and Progress
 
-- Add richer comparison views (week-over-week and month-over-month component deltas).
-- Add configurable dashboard widgets and saved ranges.
-- Add trend annotations for key events (goal created, milestone reached, major weight change).
+- Add auto-progress snapshots for weight goals on each weight check-in (matching how activity goals already auto-progress).
+- Add projected completion date per active goal based on trend slope with a confidence range.
+- Add per-goal timeline views correlating milestones, notes, and check-ins in a single view.
 
-5. UX and Product Flow
+### 5. Analytics and Visualization
 
-- Add first-run onboarding wizard (profile -> consent -> first check-in -> first goal).
-- Expand timeline interactions (edit/delete check-ins inline with optimistic updates).
-- Add explicit “data completeness” hints to guide users toward better AI insight quality.
+- Add richer comparison views with week-over-week and month-over-month component deltas.
+- Add configurable dashboard widgets and saved date ranges.
+- Add trend annotations for key events (goal created, milestone reached, significant weight change).
+- Add a nutrition calendar heatmap (similar to activity heatmap) showing daily calorie adherence.
 
-6. Testing and Reliability
+### 6. UX and Product Flow
 
-- Increase backend integration coverage for auth, privacy, and AI fallback paths.
-- Add frontend e2e smoke suite for reviewer-critical flows.
-- Add migration verification tests to prevent schema drift and data conversion issues.
+- Add a first-run onboarding wizard (profile → consent → first check-in → first goal → first meal plan).
+- Expand timeline interactions with inline edit/delete for check-ins using optimistic updates.
+- Add explicit "data completeness" indicators to guide users toward richer AI insight context.
+- Add dietary preference history so the system can learn from which generated recipes the user kept vs. replaced.
 
-7. Operations and Observability
+### 7. Testing and Reliability
 
-- Add structured logs and request tracing across auth/AI/export endpoints.
-- Add metrics dashboards (error rates, response times, AI fallback frequency, rate-limit hits).
-- Add environment health checks for external dependencies (email provider, Auth0, AI provider).
+- Increase backend integration coverage for auth, privacy, AI fallback, and meal plan generation paths.
+- Add a frontend e2e smoke suite covering reviewer-critical flows (registration, consent, meal plan generation, shopping list).
+- Add migration verification tests to catch schema drift and data conversion issues early.
+
+### 8. Operations and Observability
+
+- Add structured logs and request tracing across auth, AI, and export endpoints.
+- Add metrics dashboards covering error rates, response times, AI fallback frequency, and rate-limit hit rates.
+- Add environment health checks for external dependencies (email provider, Auth0, OpenAI API).

@@ -12,6 +12,10 @@
         "true": true,
         "mv": true,
         "cp": true,
-        "npx tsc": true
+        "npx tsc": true,
+        "/^python3 - << 'EOF'\nimport re\n\nwith open\\('/home/erik/dev/kood/erikallas/numbers-dont-lie/README\\.md', 'r'\\) as f:\n    content = f\\.read\\(\\)\n\nold = content\\[content\\.index\\('## Further Development Ideas'\\):\\]\nprint\\(repr\\(old\\[:200\\]\\)\\)\nEOF$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }
