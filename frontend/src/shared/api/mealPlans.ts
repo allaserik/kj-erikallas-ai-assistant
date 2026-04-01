@@ -225,7 +225,7 @@ export function addMealToDay(
 export function regenerateMeal(mealId: string, token: string): Promise<string | null> {
     return api
         .post<string | null | ApiResponse<string | null>>(
-            `/api/meal-plans/ai/meals/${mealId}/regenerate`,
+            `/api/meal-plans/meals/${mealId}/regenerate`,
             {},
             token
         )
@@ -243,9 +243,38 @@ export function regenerateMeal(mealId: string, token: string): Promise<string | 
 export function getAlternativeMeals(mealId: string, limit: number = 5, token: string): Promise<RecipeDetail[]> {
     return api
         .get<RecipeDetail[] | ApiResponse<RecipeDetail[]>>(
-            `/api/meal-plans/ai/alternatives/${mealId}?limit=${limit}`,
+            `/api/meal-plans/meals/${mealId}/alternatives?limit=${limit}`,
             token
         )
         .then((response) => unwrapApiData(response))
         .then((result) => result || []);
+}
+
+// ===== VERSIONING =====
+
+export type MealPlanVersion = {
+    id: string;
+    mealPlanId: string;
+    versionNumber: number;
+    createdAt: string;
+};
+
+export function listMealPlanVersions(mealPlanId: string, token: string): Promise<MealPlanVersion[]> {
+    return api
+        .get<MealPlanVersion[] | ApiResponse<MealPlanVersion[]>>(
+            `/api/meal-plans/${mealPlanId}/versions`,
+            token
+        )
+        .then((response) => unwrapApiData(response))
+        .then((result) => result || []);
+}
+
+export function restoreMealPlanVersion(mealPlanId: string, versionId: string, token: string): Promise<string | null> {
+    return api
+        .post<string | null | ApiResponse<string | null>>(
+            `/api/meal-plans/${mealPlanId}/versions/${versionId}/restore`,
+            {},
+            token
+        )
+        .then((response) => unwrapApiData(response));
 }

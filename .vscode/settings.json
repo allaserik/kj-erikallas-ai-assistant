@@ -11,6 +11,7 @@
         "pkill": true,
         "true": true,
         "mv": true,
-        "cp": true
+        "cp": true,
+        "npx tsc": true
     }
 }

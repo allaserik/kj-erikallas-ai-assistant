@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAppAuth } from "../../../shared/auth/AuthContext";
 import { useAuthToken } from "../../../shared/auth/useAuthToken";
-import { generateMealPlan, getLatestMealPlan, getMealPlanById, type GeneratedMealPlan } from "../../../shared/api/mealPlans";
+import { generateMealPlan, getLatestMealPlan, getMealPlanById, listMealPlanVersions, restoreMealPlanVersion, type GeneratedMealPlan, type MealPlanVersion } from "../../../shared/api/mealPlans";
 import { Alert } from "../../../shared/ui/Alert";
 import { Button } from "../../../shared/ui/Button";
 import { Card, CardBody, CardTitle } from "../../../shared/ui/Card";
@@ -22,6 +22,10 @@ export default function MealPlanPage() {
     const [result, setResult] = useState<GeneratedMealPlan | null>(null);
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
     const [refreshKey, setRefreshKey] = useState(0);
+    const [showVersions, setShowVersions] = useState(false);
+    const [versions, setVersions] = useState<MealPlanVersion[]>([]);
+    const [versionsLoading, setVersionsLoading] = useState(false);
+    const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null);
 
     useEffect(() => {
         const loadLastPlan = async () => {
@@ -79,6 +83,8 @@ export default function MealPlanPage() {
                 token
             );
             setResult(generated);
+            setVersions([]);
+            setShowVersions(false);
             localStorage.setItem(LAST_MEAL_PLAN_ID_KEY, generated.mealPlanId);
         } catch (e) {
             const details = e instanceof Error ? e.message : "";
@@ -89,6 +95,47 @@ export default function MealPlanPage() {
             );
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handleToggleVersions = async () => {
+        if (showVersions) { setShowVersions(false); return; }
+        if (!result) return;
+        try {
+            setVersionsLoading(true);
+            const token = await getToken();
+            if (!token) return;
+            const v = await listMealPlanVersions(result.mealPlanId, token);
+            setVersions(v);
+            setShowVersions(true);
+        } catch {
+            // ignore — versions panel stays closed
+        } finally {
+            setVersionsLoading(false);
+        }
+    };
+
+    const handleRestoreVersion = async (versionId: string) => {
+        if (!result) return;
+        if (!window.confirm("Restore this version? The current state will be saved as a new version first.")) return;
+        try {
+            setRestoringVersionId(versionId);
+            const token = await getToken();
+            if (!token) return;
+            await restoreMealPlanVersion(result.mealPlanId, versionId, token);
+            // Reload the plan after restore
+            const updated = await getLatestMealPlan(token);
+            if (updated) {
+                setResult(updated);
+                localStorage.setItem(LAST_MEAL_PLAN_ID_KEY, updated.mealPlanId);
+            }
+            setShowVersions(false);
+            setVersions([]);
+            setRefreshKey(k => k + 1);
+        } catch {
+            // ignore
+        } finally {
+            setRestoringVersionId(null);
         }
     };
 
@@ -136,7 +183,38 @@ export default function MealPlanPage() {
                             <span className="font-semibold text-slate-900 capitalize">{result.periodType} Plan</span>
                             <span>{result.startDate} – {result.endDate}</span>
                             <span>{result.totalMeals} meals</span>
+                            <button
+                                onClick={handleToggleVersions}
+                                disabled={versionsLoading}
+                                className="ml-auto px-3 py-1 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 transition disabled:opacity-50"
+                            >
+                                {versionsLoading ? "Loading…" : showVersions ? "Hide History" : "🕑 Version History"}
+                            </button>
                         </div>
+                        {showVersions && (
+                            <div className="mt-3 pt-3 border-t border-slate-200">
+                                {versions.length === 0 ? (
+                                    <p className="text-sm text-slate-500">No saved versions yet.</p>
+                                ) : (
+                                    <ul className="space-y-2">
+                                        {versions.map((v) => (
+                                            <li key={v.id} className="flex items-center justify-between text-sm">
+                                                <span className="text-slate-700">
+                                                    v{v.versionNumber} — {new Date(v.createdAt).toLocaleString()}
+                                                </span>
+                                                <button
+                                                    onClick={() => handleRestoreVersion(v.id)}
+                                                    disabled={restoringVersionId === v.id}
+                                                    className="px-3 py-1 text-xs rounded bg-amber-100 text-amber-800 hover:bg-amber-200 transition disabled:opacity-50"
+                                                >
+                                                    {restoringVersionId === v.id ? "Restoring…" : "Restore"}
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                        )}
                     </Card>
 
                     {/* Day selector tabs */}
@@ -146,8 +224,8 @@ export default function MealPlanPage() {
                                 key={day.date}
                                 onClick={() => { setSelectedDate(day.date); setRefreshKey(k => k + 1); }}
                                 className={`px-3 py-1 rounded-full text-sm font-medium transition border ${selectedDate === day.date
-                                        ? "bg-blue-600 text-white border-blue-600"
-                                        : "bg-white text-slate-700 border-slate-300 hover:border-blue-400"
+                                    ? "bg-blue-600 text-white border-blue-600"
+                                    : "bg-white text-slate-700 border-slate-300 hover:border-blue-400"
                                     }`}
                             >
                                 {new Date(day.date + "T12:00:00").toLocaleDateString("en", {

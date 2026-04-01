@@ -10,10 +10,11 @@ import {
     addMealToDay,
     getLatestMealPlan,
     getAlternativeMeals,
+    regenerateMeal,
     type MealPlanMealItem,
     type GeneratedMealPlan,
 } from "../../../shared/api/mealPlans";
-import { searchRecipes, type RecipeListItem, type RecipeDetail } from "../../../shared/api/recipes";
+import { searchRecipes, substituteIngredient, scaleServings, type RecipeListItem, type RecipeDetail, type IngredientSubstitution, type ScaledRecipeDetail } from "../../../shared/api/recipes";
 
 export interface MealManagementUIProps {
     /**
@@ -47,6 +48,14 @@ export function MealManagementUI({ date, onMealsUpdated }: MealManagementUIProps
     const [newMealType, setNewMealType] = useState("snack");
     const [newMealRecipeId, setNewMealRecipeId] = useState<string>("");
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+    const [regeneratingMealId, setRegeneratingMealId] = useState<string | null>(null);
+    // Ingredient substitution state
+    const [substitutingIngredientId, setSubstitutingIngredientId] = useState<string | null>(null);
+    const [substitutionResult, setSubstitutionResult] = useState<{ ingredientId: string; result: IngredientSubstitution } | null>(null);
+    // Scale servings state
+    const [scaledTarget, setScaledTarget] = useState<number>(2);
+    const [scaledResult, setScaledResult] = useState<ScaledRecipeDetail | null>(null);
+    const [isScaling, setIsScaling] = useState(false);
 
     // Get token on mount
     useEffect(() => {
@@ -102,13 +111,69 @@ export function MealManagementUI({ date, onMealsUpdated }: MealManagementUIProps
         loadData();
     }, [token, date]);
 
+    // Reset modal-related AI state when the selected meal changes
+    useEffect(() => {
+        setSubstitutionResult(null);
+        setScaledResult(null);
+        setScaledTarget(2);
+    }, [selectedMeal]);
+
+    // Handle regenerating a meal with AI
+    const handleRegenerateMeal = async (mealId: string) => {
+        if (!token) { setError("Not authenticated"); return; }
+        try {
+            setError(null);
+            setSuccess(null);
+            setRegeneratingMealId(mealId);
+            await regenerateMeal(mealId, token);
+            setSuccess("Meal regenerated successfully!");
+            onMealsUpdated?.();
+            const updatedPlan = await getLatestMealPlan(token);
+            setMeals(updatedPlan?.days.find((d) => d.date === date)?.meals || []);
+            setTimeout(() => setSuccess(null), 3000);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to regenerate meal");
+        } finally {
+            setRegeneratingMealId(null);
+        }
+    };
+
+    // Handle AI ingredient substitution suggestion
+    const handleSubstituteIngredient = async (recipeId: string, ingredientId: string) => {
+        if (!token) { setError("Not authenticated"); return; }
+        try {
+            setError(null);
+            setSubstitutingIngredientId(ingredientId);
+            setSubstitutionResult(null);
+            const result = await substituteIngredient(recipeId, ingredientId, undefined, token);
+            setSubstitutionResult({ ingredientId, result });
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to get substitution suggestion");
+        } finally {
+            setSubstitutingIngredientId(null);
+        }
+    };
+
+    // Handle scale-servings calculation
+    const handleScaleServings = async (recipeId: string) => {
+        if (!token) { setError("Not authenticated"); return; }
+        if (scaledTarget < 1) { setError("Target servings must be at least 1"); return; }
+        try {
+            setError(null);
+            setIsScaling(true);
+            setScaledResult(null);
+            const result = await scaleServings(recipeId, scaledTarget, token);
+            setScaledResult(result);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to scale servings");
+        } finally {
+            setIsScaling(false);
+        }
+    };
+
     // Handle reordering meals
     const handleReorderMeals = async () => {
-        if (!token) {
-            setError("Not authenticated");
-            return;
-        }
-
+        if (!token) { setError("Not authenticated"); return; }
         try {
             setError(null);
             setSuccess(null);
@@ -423,6 +488,13 @@ export function MealManagementUI({ date, onMealsUpdated }: MealManagementUIProps
                                     </button>
                                     {openMenuId === meal.id && (
                                         <div className="flex flex-col absolute right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                                            <button
+                                                onClick={() => { handleRegenerateMeal(meal.id); setOpenMenuId(null); }}
+                                                disabled={regeneratingMealId === meal.id}
+                                                className="px-4 py-2 text-sm text-left whitespace-nowrap text-purple-700 hover:bg-purple-50 border-b disabled:opacity-50"
+                                            >
+                                                {regeneratingMealId === meal.id ? "Regenerating…" : "✨ Regenerate"}
+                                            </button>
                                             {index > 0 && (
                                                 <button
                                                     onClick={() => { handleMoveUp(index); setOpenMenuId(null); }}
@@ -739,13 +811,35 @@ export function MealManagementUI({ date, onMealsUpdated }: MealManagementUIProps
                             {selectedMeal.ingredients && selectedMeal.ingredients.length > 0 && (
                                 <div>
                                     <h3 className="font-semibold text-slate-900 mb-3">Ingredients</h3>
-                                    <ul className="space-y-2">
+                                    <ul className="space-y-3">
                                         {selectedMeal.ingredients.map((ing, idx) => (
-                                            <li key={idx} className="flex justify-between text-sm text-slate-700">
-                                                <span>{ing.label}</span>
-                                                <span className="text-slate-600">
-                                                    {ing.quantity} {ing.unit}
-                                                </span>
+                                            <li key={idx} className="text-sm text-slate-700">
+                                                <div className="flex justify-between items-center">
+                                                    <span>{ing.label}</span>
+                                                    <span className="text-slate-600">
+                                                        {ing.quantity} {ing.unit}
+                                                    </span>
+                                                </div>
+                                                {ing.id && (
+                                                    <div className="mt-1">
+                                                        <button
+                                                            onClick={() => handleSubstituteIngredient(selectedMeal.recipeId, ing.id)}
+                                                            disabled={substitutingIngredientId === ing.id}
+                                                            className="text-xs text-blue-500 hover:text-blue-700 disabled:opacity-50"
+                                                        >
+                                                            {substitutingIngredientId === ing.id ? "Thinking…" : "🔄 Suggest substitute"}
+                                                        </button>
+                                                        {substitutionResult?.ingredientId === ing.id && (
+                                                            <div className="mt-1 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                                                                <span className="font-semibold text-blue-900">{substitutionResult.result.substituteLabel}</span>
+                                                                {" "}— {substitutionResult.result.suggestedQuantity} {substitutionResult.result.unit}
+                                                                {substitutionResult.result.rationale && (
+                                                                    <p className="text-slate-600 mt-1">{substitutionResult.result.rationale}</p>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </li>
                                         ))}
                                     </ul>
@@ -768,6 +862,50 @@ export function MealManagementUI({ date, onMealsUpdated }: MealManagementUIProps
                                     </ol>
                                 </div>
                             )}
+
+                            {/* Scale Servings */}
+                            <div>
+                                <h3 className="font-semibold text-slate-900 mb-3">Scale Servings</h3>
+                                <div className="flex items-center gap-3">
+                                    <label className="text-sm text-slate-600">Target:</label>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        max={20}
+                                        value={scaledTarget}
+                                        onChange={(e) => setScaledTarget(parseInt(e.target.value) || 1)}
+                                        className="w-20 px-2 py-1 border border-slate-300 rounded text-sm"
+                                    />
+                                    <button
+                                        onClick={() => handleScaleServings(selectedMeal.recipeId)}
+                                        disabled={isScaling}
+                                        className="px-3 py-1 text-sm bg-slate-100 hover:bg-slate-200 rounded font-medium transition disabled:opacity-50"
+                                    >
+                                        {isScaling ? "Calculating…" : "Calculate"}
+                                    </button>
+                                </div>
+                                {scaledResult && (
+                                    <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                                        <p className="text-xs font-semibold text-slate-700 mb-2">
+                                            {scaledResult.scaledServings} servings (from {scaledResult.originalServings}):
+                                        </p>
+                                        <ul className="space-y-1 text-xs text-slate-700 mb-2">
+                                            {scaledResult.ingredients.map((ing, i) => (
+                                                <li key={i} className="flex justify-between">
+                                                    <span>{ing.label}</span>
+                                                    <span>{Number(ing.quantity).toFixed(1)} {ing.unit}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                        <div className="grid grid-cols-4 gap-2 text-xs text-slate-600 pt-2 border-t border-slate-200">
+                                            <div><span className="font-medium">Cal:</span> {Math.round(Number(scaledResult.nutrition.caloriesKcal))} kcal</div>
+                                            <div><span className="font-medium">Pro:</span> {Math.round(Number(scaledResult.nutrition.proteinG))}g</div>
+                                            <div><span className="font-medium">Carb:</span> {Math.round(Number(scaledResult.nutrition.carbsG))}g</div>
+                                            <div><span className="font-medium">Fat:</span> {Math.round(Number(scaledResult.nutrition.fatsG))}g</div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
                             {/* Close Button */}
                             <div className="flex gap-3 pt-4 border-t">
