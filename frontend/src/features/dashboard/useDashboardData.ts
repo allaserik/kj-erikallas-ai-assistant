@@ -5,12 +5,11 @@ import { getLatestInsight } from "../../shared/api/insights";
 import { getActiveGoals } from "../../shared/api/goals";
 import { getCurrentGoalProgress } from "../../shared/api/goalProgress";
 import { getHealthSummary } from "../../shared/api/summary";
-import { getWeeklySummary, getMonthlySummary } from "../../shared/api/summaries";
 import { getPrivacyPreferences } from "../../shared/api/privacy";
 import { getActivityHistory } from "../../shared/api/activity";
 import { getDailySummary } from "../../shared/api/nutrition";
 import { useAppAuth } from "../../shared/auth/AuthContext";
-import type { UserProfile, HealthProfile, WeightEntry, Goal, Insight, HealthSummary, PeriodSummary, DailySummary } from "../../shared/types";
+import type { UserProfile, HealthProfile, WeightEntry, Goal, Insight, HealthSummary, DailySummary } from "../../shared/types";
 
 export interface DashboardData {
     me: UserProfile | null;
@@ -19,8 +18,6 @@ export interface DashboardData {
     activeGoals: Goal[];
     insight: Insight | null;
     summary: HealthSummary | null;
-    weeklySummary: PeriodSummary | null;
-    monthlySummary: PeriodSummary | null;
     nutritionSummary: DailySummary | null;
     activeDaysLast7: number;
     insightConsentRequired: boolean;
@@ -71,8 +68,6 @@ export function useDashboardData(): DashboardState {
 
     // Step 3: Fetch dependent resources only when prerequisites are present.
     const summaryQ = useAuthedQuery("summary", getHealthSummary, meReady && hasProfile && hasWeight);
-    const weeklySummaryQ = useAuthedQuery("weeklySummary", getWeeklySummary, meReady && hasProfile && hasWeight);
-    const monthlySummaryQ = useAuthedQuery("monthlySummary", getMonthlySummary, meReady && hasProfile && hasWeight);
     const nutritionSummaryQ = useAuthedQuery("nutritionSummary", getDailySummary, meReady);
 
     // Insights require explicit data usage consent and a completed profile context.
@@ -87,8 +82,6 @@ export function useDashboardData(): DashboardState {
         activeGoalsQ.loading ||
         activityQ.loading ||
         summaryQ.loading ||
-        weeklySummaryQ.loading ||
-        monthlySummaryQ.loading ||
         nutritionSummaryQ.loading ||
         insightQ.loading;
 
@@ -128,8 +121,6 @@ export function useDashboardData(): DashboardState {
         activeGoals,
         insight: insightQ.data || null,
         summary: summaryQ.data || null,
-        weeklySummary: weeklySummaryQ.data || null,
-        monthlySummary: monthlySummaryQ.data || null,
         nutritionSummary: nutritionSummaryQ.data || null,
         activeDaysLast7,
         insightConsentRequired,
