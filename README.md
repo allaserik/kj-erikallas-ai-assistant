@@ -53,9 +53,16 @@ Bonus/extra functionality implemented:
 
 ## Demo Data
 
-[Recipes from Kaggle](https://www.kaggle.com/code/snowholt/chefbelle-an-ai-kitchen-assistant?select=RAW_recipes.csv)
-[Nutrition Data from Kaggle](https://www.kaggle.com/code/snowholt/chefbelle-an-ai-kitchen-assistant?select=cleaned_nutrition_dataset.csv)
-Activity and weight data generated with realistic trends and noise based on common patterns in health tracking datasets.
+Three data sources are bundled in the repo and imported automatically on first startup:
+
+**Recipe catalog** ([RAW_recipes.csv from Kaggle](https://www.kaggle.com/code/snowholt/chefbelle-an-ai-kitchen-assistant?select=RAW_recipes.csv))
+Used by the recipe explorer and RAG similarity search. Each recipe is embedded with `text-embedding-3-small` on import and stored in pgvector for semantic retrieval.
+
+**Nutrition dataset** ([cleaned_nutrition_dataset_per100g.csv from Kaggle](https://www.kaggle.com/code/snowholt/chefbelle-an-ai-kitchen-assistant?select=cleaned_nutrition_dataset.csv))
+Per-100g nutritional values for common ingredients. Used by the `calculate_nutrition` function-calling tool to compute calories, protein, carbs, and fats for recipes and scaled servings.
+
+**Demo user data** (generated)
+Seeded when `DEMO_MODE=true`. Includes a demo account (`demo@example.com`), a filled health profile, weight and activity check-in history with realistic trends, and active goals with progress snapshots — so the dashboard, trends, and AI insight are all populated without any manual data entry.
 
 ## Quick Start
 
@@ -193,6 +200,8 @@ When AI is unavailable:
 
 - Service returns latest cached insight or a safe fallback insight
 
+For the nutrition/meal plan AI pipeline (sequential prompting, function calling, RAG, model choices) see the [AI & Nutrition System](#ai--nutrition-system-counting-calories--project-2) section.
+
 ## AI & Nutrition System (Counting Calories — Project 2)
 
 ### Prompt Engineering Strategy
@@ -217,7 +226,7 @@ The same function-calling pathway is used when a user scales a recipe to a diffe
 
 ### AI Model Selection Rationale
 
-- **Recipe generation, meal planning, and insights**: GPT-4o — chosen for its large context window (required for multi-step sequential prompts) and reliable instruction following with strict JSON schema output.
+- **Recipe generation, meal planning, and insights**: `gpt-4o-mini` (configurable via `OPENAI_MODEL`) — chosen for its balance of cost and quality across multi-step sequential prompts, with reliable instruction following using strict JSON schema output. Swap to `gpt-4o` for higher accuracy at higher cost.
 - **Embedding / RAG retrieval**: `text-embedding-3-small` — low cost, sufficient quality for semantic recipe search over the local recipe catalog.
 - Strict JSON schema mode (`response_format: json_schema`) is used for all structured output to eliminate hallucinated fields or malformed responses.
 
