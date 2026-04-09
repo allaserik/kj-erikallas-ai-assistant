@@ -7,6 +7,7 @@ import {
     Cog6ToothIcon,
     SparklesIcon,
     CheckCircleIcon,
+    ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 import { AuthButton } from "../features/auth/AuthButton";
 
@@ -110,6 +111,19 @@ export default function Sidebar() {
                     }
                 >
                     <CheckCircleIcon className="h-5 w-5" /> Goals
+                </NavLink>
+
+                {/* ASSISTANT */}
+                <div className="mt-4 mb-2 px-3">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Assistant</p>
+                </div>
+                <NavLink
+                    to="/assistant"
+                    className={({ isActive }) =>
+                        `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? "bg-green-50 text-green-700" : "text-slate-600 hover:bg-slate-50"}`
+                    }
+                >
+                    <ChatBubbleLeftRightIcon className="h-5 w-5" /> AI Assistant
                 </NavLink>
 
                 {/* USER */}

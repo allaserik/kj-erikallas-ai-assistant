@@ -10,6 +10,7 @@ Wellness tracking app with health profile collection, goal tracking, wellness sc
 - [Usage Guide](#usage-guide)
 - [Local Development](#local-development)
 - [Environment Variables](#environment-variables)
+- [AI Assistant](#ai-assistant-numbers-dont-lie--project-3)
 - [AI Insights Notes](#ai-insights-notes)
 - [AI & Nutrition System](#ai--nutrition-system-counting-calories--project-2)
 - [Further Development Ideas](#further-development-ideas)
@@ -187,6 +188,80 @@ openssl rand -base64 48   # → APP_DATA_ENCRYPTION_KEY
 ```
 
 `OPENAI_API_KEY` is optional — all AI features fall back gracefully when absent.
+
+## AI Assistant (Numbers Don't Lie — Project 3)
+
+The AI assistant provides a conversational interface to all health and nutrition data already collected by Projects 1 and 2. Users interact via a chat UI at `/assistant` (accessible from both the sidebar and the bottom navigation).
+
+### Architecture Overview
+
+The assistant follows a two-layer design:
+
+- **Conversation Layer** (`AssistantService`, `AssistantContextWindowService`, `AssistantController`) — manages the chat loop, context window, history persistence, and the system prompt.
+- **Data Access Layer** (`functions/` package) — four function handlers that call internal Java services directly (no HTTP round-trip) to retrieve health, goal, meal plan, and nutrition data.
+
+Request flow:
+
+1. User sends a message → validated by `AssistantModels.ChatRequest` (blank / >1000 chars rejected as 400).
+2. `AssistantContextWindowService` loads the user's conversation history from the `assistant_conversations` table and trims to a 6,000-token budget.
+3. `AssistantSystemPromptBuilder` builds the system prompt, injecting the user's display name, today's date, and the verbosity instruction for the selected mode.
+4. `OpenAiClient.generateWithFunctionCalling()` — round-1 call with function definitions.
+5. If the model returns `tool_calls`, all are dispatched via `AssistantFunctionRegistry.dispatch()`; results are appended and a round-2 synthesis call is made.
+6. Both the user message and the assistant reply are persisted to the database.
+7. `ChatResponse` (reply, functionCalled, timestamp) is returned to the client.
+
+### System Prompt Engineering Strategy
+
+The system prompt is built server-side by `AssistantSystemPromptBuilder` and is never visible to the client. It contains:
+
+- **Role definition** — wellness assistant scoped to the authenticated user's data only.
+- **Capability list** — explicitly names the four available functions and what each covers.
+- **Hard limitations** — cannot access other users' data, cannot diagnose, cannot modify data, cannot expose PII beyond the display name.
+- **Tone and personality guidelines** — friendly and encouraging, lead with data then encouragement, never alarmist.
+- **Response formatting rules** — bold key numbers, bullets for lists, `###` headings in detailed mode, metric units throughout, text progress meters.
+- **Verbosity instruction** — injected at request time: concise mode (1–3 sentences, no headings) or detailed mode (full breakdown with headings).
+- **Safety and ethical boundaries** — explicit handling for medical symptoms, medications, jailbreak attempts, and cross-user data requests.
+- **Six few-shot examples** — one complete before/after example per core conversation type (health metrics, progress, meal plan, recipe, nutritional analysis, general wellness).
+
+### AI Model Selection Rationale
+
+`gpt-4o-mini` is used for all assistant turns (configurable via `OPENAI_MODEL`). Rationale:
+
+- Reliable multi-turn instruction-following at low cost — essential for a feature used on every page visit.
+- Supports parallel function calling (multiple tool calls in one round) without additional configuration.
+- Sufficient context window (128k tokens) for long conversation histories.
+- Swap to `gpt-4o` for higher reasoning quality — no code changes required, just update `OPENAI_MODEL`.
+
+Temperature is kept at the API default (1.0) for the assistant — natural conversational variation is desirable, unlike the nutrition pipeline which uses lower temperatures (0.3) for deterministic macro calculations.
+
+### Conversation Management Approach
+
+Conversation history is persisted per-user in the `assistant_conversations` PostgreSQL table (role, content, token estimate, timestamp). On every request:
+
+- `AssistantContextWindowService.buildMessagesJson()` loads the full ordered history, filters `system_summary` rows, and trims oldest messages when the total token estimate exceeds 6,000 tokens. A minimum of 10 messages (5 exchanges) is always preserved regardless of token count.
+- History survives browser close, session expiry, and server restart — loaded fresh via `GET /api/assistant/history` on every page open.
+- The `DELETE /api/assistant/history` endpoint hard-deletes all turns for the user (trash icon in the chat header).
+
+### Function Calling Implementation
+
+Four functions are registered in `AssistantFunctionRegistry` as OpenAI tool definitions:
+
+| Function                | Parameters                            | Returns                                                                                                  |
+| ----------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `get_health_metrics`    | none                                  | BMI, weight trend, height, age, gender, activity level, wellness score, dietary preferences/restrictions |
+| `get_goals`             | `include_history?: boolean`           | Active goals with targets, progress %, on-track flag, optional last-5 snapshots                          |
+| `get_meal_plan`         | `period: "today"\|"tomorrow"\|"week"` | Meal names, types, macros (kcal/protein/carbs/fats), prep time, difficulty per day                       |
+| `get_nutrition_summary` | `period: "today"\|"week"`             | Today: full macro breakdown vs. targets; week: 7-day calorie trend with daily breakdown                  |
+
+Security: the `userId` passed to every handler is always sourced from the authenticated JWT — function definitions sent to OpenAI intentionally have no `user_id` parameter, making cross-user data requests architecturally impossible regardless of prompt injection.
+
+### Error Handling
+
+- **No API key** — `AssistantService.chat()` detects `openAiClient.hasKey() == false` and returns a friendly fallback message; the conversation is still persisted so history is not lost.
+- **Function data absent** — each handler returns a structured `{"error": "..."}` or `{"message": "..."}` JSON payload; the model relays this conversationally.
+- **Runtime exception in chat loop** — caught and logged; a "please try again" reply is returned instead of a stack trace.
+- **Input validation** — blank messages and messages over 1,000 characters are rejected with 400 before reaching the AI layer.
+- **Rate limiting** — 20 requests/minute per user on the chat endpoint via `RateLimitService`.
 
 ## AI Insights Notes
 
