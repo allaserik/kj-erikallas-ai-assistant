@@ -5,6 +5,7 @@ import {
     FireIcon,
     ChartBarIcon,
     UserCircleIcon,
+    ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 
 // BottomNav: Mobile navigation with domain-based organization
@@ -60,6 +61,18 @@ export default function BottomNav() {
                 >
                     <ChartBarIcon className="h-6 w-6" />
                     <span>Insights</span>
+                </NavLink>
+
+                {/* Assistant */}
+                <NavLink
+                    to="/assistant"
+                    className={({ isActive }) =>
+                        `flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs rounded-md transition-colors ${isActive ? "text-green-700 bg-green-50" : "text-slate-600"}`
+                    }
+                    aria-label="Assistant"
+                >
+                    <ChatBubbleLeftRightIcon className="h-6 w-6" />
+                    <span>Assistant</span>
                 </NavLink>
 
                 {/* Profile */}

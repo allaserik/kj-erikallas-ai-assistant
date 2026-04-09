@@ -27,6 +27,9 @@ import CheckInPage from './features/training/pages/CheckInPage';
 import InsightsPage from './features/insights/InsightsPage';
 import TrendsPage from './features/insights/pages/TrendsPage';
 
+// Assistant domain
+import AssistantPage from './features/assistant/AssistantPage';
+
 // Auth
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage';
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage';
@@ -92,6 +95,9 @@ function LoggedInContent() {
         <Route path="insights" element={<InsightsPage />}>
           <Route index element={<TrendsPage />} />
         </Route>
+
+        {/* Assistant */}
+        <Route path="assistant" element={<AssistantPage />} />
 
         {/* Goals */}
         <Route path="goals" element={<GoalsPage />} />
