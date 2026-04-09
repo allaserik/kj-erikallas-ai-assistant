@@ -81,6 +81,35 @@ public class GetNutritionSummaryFunction {
                 breakdown.add(dayNode);
             }
 
+            // --- Weekly calorie trend bar chart ---
+            ArrayNode consumedPts = om.createArrayNode();
+            ArrayNode targetPts = om.createArrayNode();
+            for (DailyTrendPoint day : dailyTrends) {
+                String label = day.date().getDayOfWeek().toString().substring(0, 3);
+                ObjectNode cp = om.createObjectNode();
+                cp.put("x", label);
+                cp.put("y", day.consumed());
+                consumedPts.add(cp);
+                ObjectNode tp = om.createObjectNode();
+                tp.put("x", label);
+                tp.put("y", day.target());
+                targetPts.add(tp);
+            }
+            ObjectNode weekChart = result.putObject("_chart_data");
+            weekChart.put("type", "bar");
+            weekChart.put("title", "Calorie Intake vs Target (7 Days)");
+            ArrayNode weekSeries = weekChart.putArray("series");
+            ObjectNode cs = om.createObjectNode();
+            cs.put("label", "Consumed");
+            cs.put("unit", "kcal");
+            cs.set("data", consumedPts);
+            weekSeries.add(cs);
+            ObjectNode ts = om.createObjectNode();
+            ts.put("label", "Target");
+            ts.put("unit", "kcal");
+            ts.set("data", targetPts);
+            weekSeries.add(ts);
+
         } else {
             // Today — full macro breakdown
             DailySummary summary = dashboardService.getDailySummary(userId);
@@ -98,6 +127,45 @@ public class GetNutritionSummaryFunction {
                 int pct = summary.calories().percentageOfTarget();
                 result.put("overall_status", pct < 80 ? "significantly_under_target"
                         : pct < 95 ? "slightly_under_target" : pct <= 105 ? "on_target" : "over_target");
+            }
+
+            // --- Macro breakdown pie chart ---
+            if (summary.protein() != null && summary.carbs() != null && summary.fats() != null) {
+                ArrayNode protPts = om.createArrayNode();
+                ObjectNode pp = om.createObjectNode();
+                pp.put("x", "Protein");
+                pp.put("y", safeDouble(summary.protein().actual()));
+                protPts.add(pp);
+                ArrayNode carbPts = om.createArrayNode();
+                ObjectNode cp2 = om.createObjectNode();
+                cp2.put("x", "Carbs");
+                cp2.put("y", safeDouble(summary.carbs().actual()));
+                carbPts.add(cp2);
+                ArrayNode fatPts = om.createArrayNode();
+                ObjectNode fp = om.createObjectNode();
+                fp.put("x", "Fats");
+                fp.put("y", safeDouble(summary.fats().actual()));
+                fatPts.add(fp);
+
+                ObjectNode todayChart = result.putObject("_chart_data");
+                todayChart.put("type", "pie");
+                todayChart.put("title", "Macro Breakdown Today");
+                ArrayNode todaySeries = todayChart.putArray("series");
+                ObjectNode s1 = om.createObjectNode();
+                s1.put("label", "Protein");
+                s1.put("unit", "g");
+                s1.set("data", protPts);
+                todaySeries.add(s1);
+                ObjectNode s2 = om.createObjectNode();
+                s2.put("label", "Carbs");
+                s2.put("unit", "g");
+                s2.set("data", carbPts);
+                todaySeries.add(s2);
+                ObjectNode s3 = om.createObjectNode();
+                s3.put("label", "Fats");
+                s3.put("unit", "g");
+                s3.set("data", fatPts);
+                todaySeries.add(s3);
             }
         }
 

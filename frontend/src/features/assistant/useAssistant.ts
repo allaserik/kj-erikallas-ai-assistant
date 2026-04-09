@@ -48,6 +48,7 @@ export function useAssistant() {
                     role: "assistant",
                     content: response.reply,
                     createdAt: response.timestamp,
+                    chart: response.chart ?? undefined,
                 };
                 setMessages((prev) => [...prev, assistantMsg]);
             } catch (err) {

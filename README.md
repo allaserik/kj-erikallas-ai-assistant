@@ -1,6 +1,6 @@
 # Numbers Don't Lie | Counting Calories
 
-Wellness tracking app with health profile collection, goal tracking, wellness scoring, AI-generated insights, and trend visualizations. Meal planning and recipe generation features with OpenAI function calling for nutrition calculations.
+Wellness tracking app with health profile collection, goal tracking, wellness scoring, AI-generated insights, and trend visualizations. Meal planning and recipe generation features with OpenAI function calling for nutrition calculations. Includes a conversational AI assistant with real-time data access, inline chart rendering, and AI-based conversation summarisation.
 
 ## Table Of Contents
 
@@ -33,6 +33,9 @@ Main capabilities:
 - AI meal plan generation with scaling and shopping list export
 - RAG-powered recipe recommendations using pgvector similarity search
 - Calorie trend charts with target-based color coding (daily/weekly/monthly)
+- AI chat assistant with 5-function tool-calling, real-time read access to health data across all modules
+- Inline chart rendering in chat responses (line / bar / pie) via Recharts
+- AI-based conversation summarisation with topic-aware context compression
 
 Bonus/extra functionality implemented:
 
@@ -41,13 +44,15 @@ Bonus/extra functionality implemented:
 - OpenAI function calling for dynamic serving-size scaling in recipes
 - Demo data mode for end-to-end visualization testing
 - Application-layer at-rest protection for sensitive auth secrets
+- Proactive chart suggestions: assistant calls chart functions autonomously when discussing trends
+- Dynamic topic-shift compression: off-topic history is prioritised for summarisation over recent on-topic turns
 
 ## Tech Stack
 
 - Backend: Java, Spring Boot, Spring Security, JPA/Hibernate, Flyway, PostgreSQL
 - Frontend: React, TypeScript, Vite, Recharts
 - Auth: Local JWT + Auth0 resource-server validation for OAuth tokens
-- AI: OpenAI Responses API with function calling (optional), strict JSON schema output
+- AI: OpenAI Responses API with function calling (optional), strict JSON schema output; chat assistant with 5 registered tools, inline chart rendering, and AI-based context summarisation
 - Vector search: pgvector (PostgreSQL extension) for RAG recipe similarity search
 - Email: JavaMailSender with SMTP/MailHog support
 - Containerization: Docker Compose for multi-service orchestration
@@ -119,7 +124,8 @@ Start with demo mode for the fastest path to a populated app. Use `demo@example.
 5. **Dashboard** — BMI, wellness score, active-days indicator, AI insight, weekly/monthly summary cards.
 6. **Trends** — weight chart, wellness evolution, component breakdown, activity heatmap; switch date ranges.
 7. **Nutrition** — explore recipes, filter by protein/difficulty, generate a meal plan, get a shopping list.
-8. **Settings** — privacy consent (gates AI insight), 2FA setup, data export, account deletion.
+8. **AI Assistant** — open the chat panel, ask a question about your health or nutrition data; the assistant fetches live data via function calling and may render an inline chart.
+9. **Settings** — privacy consent (gates AI insight), 2FA setup, data export, account deletion.
 
 ### Reviewer fast-path (5 minutes)
 
@@ -133,6 +139,7 @@ Use demo mode so data is already populated:
 6. Open **Nutrition → Recipes** — search and filter; open a recipe for detail view.
 7. Open **Nutrition → Meal Plan** — generate a plan and view the shopping list.
 8. Go to **Settings → Export** — trigger export and confirm the historical JSON payload downloads.
+9. Open **AI Assistant** — type "How has my weight been lately?" and confirm the assistant calls `get_weight_trend` and renders an inline line chart.
 
 ## Local Development
 
@@ -198,30 +205,32 @@ The AI assistant provides a conversational interface to all health and nutrition
 The assistant follows a two-layer design:
 
 - **Conversation Layer** (`AssistantService`, `AssistantContextWindowService`, `AssistantController`) — manages the chat loop, context window, history persistence, and the system prompt.
-- **Data Access Layer** (`functions/` package) — four function handlers that call internal Java services directly (no HTTP round-trip) to retrieve health, goal, meal plan, and nutrition data.
+- **Data Access Layer** (`functions/` package) — five function handlers that call internal Java services directly (no HTTP round-trip) to retrieve health, goal, meal plan, nutrition, and weight trend data.
 
 Request flow:
 
 1. User sends a message → validated by `AssistantModels.ChatRequest` (blank / >1000 chars rejected as 400).
-2. `AssistantContextWindowService` loads the user's conversation history from the `assistant_conversations` table and trims to a 6,000-token budget.
-3. `AssistantSystemPromptBuilder` builds the system prompt, injecting the user's display name, today's date, and the verbosity instruction for the selected mode.
-4. `OpenAiClient.generateWithFunctionCalling()` — round-1 call with function definitions.
-5. If the model returns `tool_calls`, all are dispatched via `AssistantFunctionRegistry.dispatch()`; results are appended and a round-2 synthesis call is made.
-6. Both the user message and the assistant reply are persisted to the database.
-7. `ChatResponse` (reply, functionCalled, timestamp) is returned to the client.
+2. `AssistantContextWindowService.maybeSummariseHistory()` checks total token usage; if the 6,000-token budget is exceeded, it runs topic detection on recent messages, sorts off-topic turns first, builds a transcript, and calls `OpenAiClient.generateText()` to produce an AI summary row — replacing the eligible messages before the context window is loaded.
+3. `AssistantContextWindowService.buildMessagesJson()` loads the user's ordered conversation history (including any stored summary), and assembles the context array.
+4. `AssistantSystemPromptBuilder` builds the system prompt, injecting the user's display name, today's date, and the verbosity instruction for the selected mode.
+5. `OpenAiClient.generateWithFunctionCalling()` — round-1 call with function definitions.
+6. If the model returns `tool_calls`, all are dispatched via `AssistantFunctionRegistry.dispatch()`; any `_chart_data` JSON node is extracted from each tool result (stored separately, stripped before sending to the AI), and a round-2 synthesis call is made.
+7. Both the user message and the assistant reply are persisted to the database.
+8. `ChatResponse` (reply, functionCalled, timestamp, chart) is returned to the client; the frontend renders an inline chart when `chart` is non-null.
 
 ### System Prompt Engineering Strategy
 
 The system prompt is built server-side by `AssistantSystemPromptBuilder` and is never visible to the client. It contains:
 
 - **Role definition** — wellness assistant scoped to the authenticated user's data only.
-- **Capability list** — explicitly names the four available functions and what each covers.
+- **Capability list** — explicitly names the five available functions and what each covers.
 - **Hard limitations** — cannot access other users' data, cannot diagnose, cannot modify data, cannot expose PII beyond the display name.
 - **Tone and personality guidelines** — friendly and encouraging, lead with data then encouragement, never alarmist.
 - **Response formatting rules** — bold key numbers, bullets for lists, `###` headings in detailed mode, metric units throughout, text progress meters.
 - **Verbosity instruction** — injected at request time: concise mode (1–3 sentences, no headings) or detailed mode (full breakdown with headings).
 - **Safety and ethical boundaries** — explicit handling for medical symptoms, medications, jailbreak attempts, and cross-user data requests.
 - **Six few-shot examples** — one complete before/after example per core conversation type (health metrics, progress, meal plan, recipe, nutritional analysis, general wellness).
+- **Proactive chart suggestions** — the prompt instructs the model to autonomously call `get_weight_trend` when the user asks about weight trends, and `get_nutrition_summary` when discussing macros or calorie intake, using the phrase "Let me pull up a chart for you…" before revealing the result. A seventh example (weight trend question → proactive chart call) demonstrates this behaviour.
 
 ### AI Model Selection Rationale
 
@@ -234,26 +243,46 @@ The system prompt is built server-side by `AssistantSystemPromptBuilder` and is 
 
 Temperature is kept at the API default (1.0) for the assistant — natural conversational variation is desirable, unlike the nutrition pipeline which uses lower temperatures (0.3) for deterministic macro calculations.
 
-### Conversation Management Approach
+### Conversation Management and AI Summarisation
 
 Conversation history is persisted per-user in the `assistant_conversations` PostgreSQL table (role, content, token estimate, timestamp). On every request:
 
-- `AssistantContextWindowService.buildMessagesJson()` loads the full ordered history, filters `system_summary` rows, and trims oldest messages when the total token estimate exceeds 6,000 tokens. A minimum of 10 messages (5 exchanges) is always preserved regardless of token count.
+- **Token budget check** (`maybeSummariseHistory`): before loading the context window, total token usage across all user/assistant turns is estimated. If it exceeds the 6,000-token budget:
+  1. **Topic detection** — the last 3 user messages are scored by keyword against five topics (`weight`, `nutrition`, `goals`, `meal_plan`, `general`). The highest-scoring topic becomes the _current topic_.
+  2. **Off-topic-first sort** — eligible turns (all except the most recent 10) are sorted: messages whose topic does not match the current topic come first, then by age (oldest first).
+  3. **AI summarisation** — the sorted transcript is passed to `OpenAiClient.generateText()` with a system prompt that instructs the model to preserve factual details, lead with current-topic facts, and write in third-person past tense (max 180 words). The result is stored as a `system_summary` row and the original turns are deleted.
+  4. **Fallback** — if the AI call fails, the oldest messages are hard-deleted until the budget is satisfied.
+- **Context assembly** (`buildMessagesJson`): loads the full ordered history; if a `system_summary` row exists it is prepended as a `role: "system"` message so the model can reference earlier context that was compressed away. A minimum of 10 messages (5 exchanges) is always preserved regardless of token count.
 - History survives browser close, session expiry, and server restart — loaded fresh via `GET /api/assistant/history` on every page open.
 - The `DELETE /api/assistant/history` endpoint hard-deletes all turns for the user (trash icon in the chat header).
 
 ### Function Calling Implementation
 
-Four functions are registered in `AssistantFunctionRegistry` as OpenAI tool definitions:
+Five functions are registered in `AssistantFunctionRegistry` as OpenAI tool definitions:
 
-| Function                | Parameters                            | Returns                                                                                                  |
-| ----------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `get_health_metrics`    | none                                  | BMI, weight trend, height, age, gender, activity level, wellness score, dietary preferences/restrictions |
-| `get_goals`             | `include_history?: boolean`           | Active goals with targets, progress %, on-track flag, optional last-5 snapshots                          |
-| `get_meal_plan`         | `period: "today"\|"tomorrow"\|"week"` | Meal names, types, macros (kcal/protein/carbs/fats), prep time, difficulty per day                       |
-| `get_nutrition_summary` | `period: "today"\|"week"`             | Today: full macro breakdown vs. targets; week: 7-day calorie trend with daily breakdown                  |
+| Function                | Parameters                            | Returns                                                                                                    |
+| ----------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `get_health_metrics`    | none                                  | BMI, weight trend, height, age, gender, activity level, wellness score, dietary preferences/restrictions   |
+| `get_goals`             | `include_history?: boolean`           | Active goals with targets, progress %, on-track flag, optional last-5 snapshots                            |
+| `get_meal_plan`         | `period: "today"\|"tomorrow"\|"week"` | Meal names, types, macros (kcal/protein/carbs/fats), prep time, difficulty per day                         |
+| `get_nutrition_summary` | `period: "today"\|"week"`             | Today: full macro breakdown vs. targets + pie chart payload; week: 7-day calorie trend + bar chart payload |
+| `get_weight_trend`      | `period?: "30d"\|"90d"`               | Time-series weight readings with `_chart_data` line chart payload (defaults to 30 days)                    |
 
 Security: the `userId` passed to every handler is always sourced from the authenticated JWT — function definitions sent to OpenAI intentionally have no `user_id` parameter, making cross-user data requests architecturally impossible regardless of prompt injection.
+
+### Inline Chart Rendering
+
+Function handlers embed a `_chart_data` JSON node in their tool results when visualisation is useful. `AssistantService` extracts this node before passing tool results to the AI synthesis call — the model never sees raw chart data, preventing it from summarising numbers that the chart already communicates visually.
+
+The extracted `ChartData` record (`type`, `title`, `series[]`) is forwarded in the `ChatResponse.chart` field. The frontend `AssistantMessage` component renders it using Recharts:
+
+| Chart type | Used for                                  | Visual                                                              |
+| ---------- | ----------------------------------------- | ------------------------------------------------------------------- |
+| `line`     | Weight trend (30d / 90d)                  | `ResponsiveContainer` → `LineChart` with green stroke, MM-DD x-axis |
+| `bar`      | Weekly calorie intake vs. daily target    | Side-by-side bars: green (consumed) + slate (target), with `Legend` |
+| `pie`      | Macro breakdown today (protein/carbs/fat) | `PieChart` with three-colour segments and percentage labels         |
+
+Charts appear below the assistant's text reply and are only rendered on assistant messages.
 
 ### Error Handling
 
@@ -375,3 +404,14 @@ Practical next steps grouped by area:
 - Add structured logs and request tracing across auth, AI, and export endpoints.
 - Add metrics dashboards covering error rates, response times, AI fallback frequency, and rate-limit hit rates.
 - Add environment health checks for external dependencies (email provider, Auth0, OpenAI API).
+
+### 9. AI Assistant
+
+- Stream assistant replies with SSE so tokens appear incrementally rather than waiting for the full response.
+- Allow the assistant to write data (e.g., create a goal, log a weight entry) when the user explicitly confirms — currently it is strictly read-only.
+- Add chart export: let users save or share a chart image from inside the chat panel.
+- Add push notifications for goal milestones triggered by the assistant ("You've hit 90 % of your weight goal — great work!").
+- Evaluate multi-turn summarisation quality with automated scenario tests; score against a reference summary to catch regressions.
+- Add voice input/output (Web Speech API + TTS) for hands-free assistant interaction.
+- Extend chart types: scatter plot for BMI over time, stacked bar for macro proportions per day.
+- Support per-conversation topic labels so users can switch between named conversation threads.

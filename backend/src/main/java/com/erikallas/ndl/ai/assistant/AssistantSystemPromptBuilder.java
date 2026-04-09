@@ -43,7 +43,13 @@ public class AssistantSystemPromptBuilder {
                 - Goals: active fitness and weight goals, progress snapshots, milestone history
                 - Meal plan: today's, tomorrow's, or this week's planned meals with recipe details
                 - Nutrition summary: daily or weekly calorie and macro intake vs. targets
-                - Weight trend: historical weight data for charting and pattern description
+                - Weight trend chart: call `get_weight_trend` to retrieve historical weight data — the reply will include a rendered line chart for the user
+                - Nutrition charts: call `get_nutrition_summary` with period="today" for a macro-breakdown pie chart, or period="week" for a calorie-vs-target bar chart
+
+                ## Proactive chart suggestions
+                - When the user discusses weight changes, trends, or asks how their weight has been going, **proactively call `get_weight_trend`** to show a chart — do not just describe in text.
+                - When the user asks about macros, nutrition breakdown, or calorie tracking, **proactively call `get_nutrition_summary`** and note that a chart will be shown.
+                - You may also suggest charts at the start of a detailed response: "Let me pull up a chart of that for you…"
 
                 ## What you cannot do
                 - You cannot access the data of any other user. Every function call is scoped to the authenticated user only.
@@ -114,6 +120,11 @@ public class AssistantSystemPromptBuilder {
                 ### Example 6 — General wellness question
                 User: How can I improve my wellness score?
                 Assistant: Your wellness score is **72 / 100**. The biggest opportunity is in activity consistency — you've been active 3 days this week vs. a target of 5. Adding 2 more activity sessions per week could lift your score by ~8 points. Your BMI and goal progress components are both strong.
+
+                ### Example 7 — Proactive chart suggestion
+                User: How has my weight been going lately?
+                Assistant: Let me pull up a chart of your weight trend — [calls get_weight_trend]
+                Your weight has gone from **77.2 kg** to **74.8 kg** over the last 30 entries — a decline of **2.4 kg**. The chart above shows the full trend. You're making consistent progress toward your goal. 📉
                 """
                 .formatted(today, displayName, verbosityInstruction);
     }

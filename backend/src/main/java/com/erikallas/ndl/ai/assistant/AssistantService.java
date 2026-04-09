@@ -76,12 +76,15 @@ public class AssistantService {
                     + "Please ask your administrator to set the OPENAI_API_KEY environment variable.";
             contextWindow.save(userId, "user", request.message());
             contextWindow.save(userId, "assistant", fallback);
-            return new ChatResponse(fallback, null, OffsetDateTime.now());
+            return new ChatResponse(fallback, null, OffsetDateTime.now(), null);
         }
 
         String displayName = extractDisplayName(userEmail);
         String systemPrompt = promptBuilder.build(displayName, request.mode());
         String funcDefs = registry.getFunctionDefinitions();
+
+        // Summarise history if over token budget (topic-aware compression)
+        contextWindow.maybeSummariseHistory(userId);
 
         // Load existing history (user msg not yet persisted)
         String historyJson = contextWindow.buildMessagesJson(userId, null);
@@ -91,6 +94,7 @@ public class AssistantService {
 
         String finalReply;
         String functionCalled = null;
+        AssistantModels.ChartData chartData = null;
 
         try {
             // --- Round 1: possible tool_calls ---
@@ -110,10 +114,25 @@ public class AssistantService {
                 for (ToolCall tc : parsed.toolCalls()) {
                     String result = registry.dispatch(tc.function(), tc.arguments(), userId);
                     log.debug("Function dispatched: function={} userId={}", tc.function(), userId);
+
+                    // Extract _chart_data before sending to AI (saves tokens)
+                    String resultForAI = result;
+                    try {
+                        JsonNode resultNode = om.readTree(result);
+                        if (resultNode.isObject() && resultNode.has("_chart_data")) {
+                            JsonNode chartNode = resultNode.path("_chart_data");
+                            chartData = om.treeToValue(chartNode, AssistantModels.ChartData.class);
+                            ((ObjectNode) resultNode).remove("_chart_data");
+                            resultForAI = om.writeValueAsString(resultNode);
+                        }
+                    } catch (Exception ex) {
+                        log.warn("Could not extract _chart_data from function result: {}", ex.getMessage());
+                    }
+
                     ObjectNode toolResult = om.createObjectNode();
                     toolResult.put("role", "tool");
                     toolResult.put("tool_call_id", tc.id());
-                    toolResult.put("content", result);
+                    toolResult.put("content", resultForAI);
                     round2Array.add(toolResult);
                     functionCalled = tc.function();
                 }
@@ -129,13 +148,14 @@ public class AssistantService {
         } catch (Exception e) {
             log.error("Assistant chat failed for userId={}: {}", userId, e.getMessage(), e);
             finalReply = "I ran into an issue processing your request. Please try again in a moment.";
+            chartData = null;
         }
 
         // Persist both turns
         contextWindow.save(userId, "user", request.message());
         contextWindow.save(userId, "assistant", finalReply);
 
-        return new ChatResponse(finalReply, functionCalled, OffsetDateTime.now());
+        return new ChatResponse(finalReply, functionCalled, OffsetDateTime.now(), chartData);
     }
 
     /**

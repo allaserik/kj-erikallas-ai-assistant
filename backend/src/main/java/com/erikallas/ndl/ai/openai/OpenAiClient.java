@@ -212,4 +212,40 @@ public class OpenAiClient {
             throw new IllegalStateException("Failed to parse AI assistant response", e);
         }
     }
+
+    /**
+     * Generate a short plain-text response (no JSON schema, no function calling).
+     * Intended for internal AI tasks like conversation summarisation.
+     *
+     * @param systemPrompt The system instruction.
+     * @param userPrompt   The content to process.
+     * @param maxTokens    Hard cap on output length.
+     * @return The assistant's plain-text reply.
+     */
+    public String generateText(String systemPrompt, String userPrompt, int maxTokens) {
+        String key = env.getProperty("OPENAI_API_KEY");
+        if (key == null || key.isBlank()) {
+            throw new IllegalStateException("OPENAI_API_KEY is not set");
+        }
+
+        java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("model", model());
+        body.put("messages", java.util.List.of(Map.of("role", "system", "content", systemPrompt),
+                Map.of("role", "user", "content", userPrompt)));
+        body.put("temperature", 0.3);
+        body.put("max_tokens", maxTokens);
+
+        try {
+            String raw = rest.post().uri("/chat/completions").header(HttpHeaders.AUTHORIZATION, "Bearer " + key)
+                    .contentType(MediaType.APPLICATION_JSON).body(body).retrieve().body(String.class);
+
+            if (raw == null || raw.isBlank()) {
+                throw new IllegalStateException("OpenAI response body was empty");
+            }
+
+            return om.readTree(raw).path("choices").get(0).path("message").path("content").asText();
+        } catch (Exception e) {
+            throw new IllegalStateException("generateText request failed: " + e.getMessage(), e);
+        }
+    }
 }

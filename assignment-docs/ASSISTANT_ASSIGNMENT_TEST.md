@@ -207,7 +207,7 @@ The project includes a Dockerfile or script that builds and runs the app with on
 
 **Implemented:** `docker compose up -d --build` from the repo root builds and starts the PostgreSQL database, Spring Boot backend, and React/Nginx frontend in a single command. Separate Dockerfiles exist for backend and frontend. Two `.env` templates (`.env.demo.example`, `.env.clean.example`) cover both modes. Docker is the only prerequisite — no JDK, Node.js, or manual migration steps required.
 
-### ❌ System generates appropriate charts in response to natural language requests for different visualization types.
+### ✅ System generates appropriate charts in response to natural language requests for different visualization types.
 
 Example tests:
 
@@ -215,25 +215,25 @@ Example tests:
 - `Show how my protein intake compares to my target` - verify comparison bar chart
 - `Show the breakdown of my macronutrients today` verify proportion pie chart
 
-**Not implemented:** The `get_weight_trend` function (extra requirement from the implementation plan) was not built. The `ChatResponse` model does not include a `chart` field, and `AssistantMessage.tsx` does not render inline charts. The assistant can describe trends in natural language but cannot generate interactive chart payloads.
+**Implemented:** Three chart types are fully supported. (1) **Line chart** — `GetWeightTrendFunction` (new) returns up to 90 days of weight entries as time-series data. (2) **Bar chart** — `GetNutritionSummaryFunction` with `period="week"` returns a 2-series bar chart of daily consumed vs. target calories. (3) **Pie chart** — `GetNutritionSummaryFunction` with `period="today"` returns a 3-segment pie of protein / carbs / fats grams. Each function embeds a `_chart_data` JSON node in its result; `AssistantService` strips it before sending to the AI (saving tokens) and includes it in `ChatResponse.chart`. `AssistantMessage.tsx` renders the appropriate Recharts component (LineChart, BarChart or PieChart) inline below the text reply.
 
-### ❌ System proactively suggests relevant visualizations based on conversation context without explicit user requests.
+### ✅ System proactively suggests relevant visualizations based on conversation context without explicit user requests.
 
 Discuss protein consumption patterns without requesting visualization, then check if assistant offers to show a chart.
 
-**Not implemented:** Proactive chart suggestion logic was not added to the system prompt or service layer. This depends on chart generation being implemented first.
+**Implemented:** `AssistantSystemPromptBuilder` now includes a dedicated "Proactive chart suggestions" section instructing the AI to call `get_weight_trend` when discussing weight changes (even if the user didn't explicitly request a chart) and `get_nutrition_summary` for macro/calorie discussions. A new few-shot Example 7 demonstrates this behaviour ("How has my weight been going lately?" → AI proactively calls `get_weight_trend` and renders the chart). The `get_weight_trend` and `get_nutrition_summary` function descriptions also mention chart generation so the model understands charts are produced.
 
-### ⚠️ System automatically compresses conversation history into concise summaries when approaching token limits.
+### ✅ System automatically compresses conversation history into concise summaries when approaching token limits.
 
 Conduct a conversation with 10+ turns and examine how earlier turns are handled in the context. Verify that key user information, constraints, and preferences mentioned earlier remain available.
 
-**Partially implemented:** `AssistantContextWindowService` trims the context window by dropping the oldest messages when the 6,000-token budget is exceeded, always preserving the most recent 10 messages. However, **no AI-based summarization** is performed — dropped messages are deleted rather than condensed into a `system_summary` row. The `system_summary` role and the `deleteAllByUserId` / `findOldestByUserId` repository methods are in place as the infrastructure for summarisation, but the summarisation call itself was not implemented.
+**Implemented:** `AssistantContextWindowService.maybeSummariseHistory()` is called at the start of every chat turn. When the history exceeds the 6,000-token budget, it identifies the messages eligible for compression (all except the last `MIN_KEEP_MESSAGES` = 10), calls `OpenAiClient.generateText()` to produce a concise memory note (max 300 tokens), stores the result as a `system_summary` row in the database, and deletes the original messages. On subsequent turns, `buildMessagesJson` prepends the summary as a `"role":"system"` message so all key facts (weight, goals, preferences) remain in context. A fallback to simple trimming is applied if the AI summarisation call fails.
 
-### ❌ System adjusts context detail level dynamically based on relevance to the current conversation topic.
+### ✅ System adjusts context detail level dynamically based on relevance to the current conversation topic.
 
 After 10+ turns of conversation, shift topic (e.g., from nutrition to exercise) and examine context handling. Ask student to demonstrate how the system adjusts the detail level to current topic and compression of less relevant topic information.
 
-**Not implemented:** Dynamic topic-shift compression was not implemented. All messages within the token budget are included at full detail regardless of topic relevance.
+**Implemented:** `maybeSummariseHistory()` performs keyword-based topic detection over the most recent 3 user messages (topics: "weight", "nutrition", "goals", "meal_plan", "general"). When selecting which eligible messages to compress, it sorts candidates: **off-topic messages first, then by age** — so a conversation about weight goals that shifts to nutrition will preferentially compress the older nutrition messages before compressing weight-topic messages that are more relevant to the current context. The summarisation prompt is also topic-aware: it tells the AI to "lead with details most relevant to the current topic" (`SUMMARISE_SYSTEM` constant), so the produced summary prioritises on-topic facts. Messages within the protected `MIN_KEEP_MESSAGES` window are always kept at full detail regardless of topic.
 
 ### ✅ The AI assistant demonstrates natural conversational quality that creates a helpful, cohesive user experience beyond technical feature compliance.
 
@@ -241,7 +241,7 @@ After 10+ turns of conversation, shift topic (e.g., from nutrition to exercise) 
 
 ### ✅ The system demonstrates appropriate performance optimization by efficiently retrieving only necessary data rather than overfetching.
 
-**Implemented:** Functions are invoked on-demand by the model only when the user's question requires specific data — no data is pre-fetched on every request. `GetMealPlanFunction` returns a compact summary (recipe name, macros, time, difficulty) rather than full ingredient lists. `GetNutritionSummaryFunction` uses lightweight `DailyTrendPoint` objects for the weekly view. Token-budget trimming in `AssistantContextWindowService` keeps the history payload lean.
+**Implemented:** Functions are invoked on-demand by the model only when the user's question requires specific data — no data is pre-fetched on every request. `GetNutritionSummaryFunction` uses lightweight `DailyTrendPoint` objects for the weekly view. `GetWeightTrendFunction` trims to 30 or 90 entries and strips the `_chart_data` payload before the result reaches the AI. Token-budget summarisation in `AssistantContextWindowService` keeps the history payload lean, and off-topic messages are compressed before on-topic ones.
 
 ### ✅ Error handling system provides graceful fallbacks and clear user feedback when services fail or requests cannot be fulfilled.
 
