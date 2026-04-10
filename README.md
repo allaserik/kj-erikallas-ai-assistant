@@ -85,6 +85,7 @@ openssl rand -base64 48   # → APP_DATA_ENCRYPTION_KEY
 cp .env.demo.example .env
 # Edit .env: set APP_TOKEN_PEPPER and APP_DATA_ENCRYPTION_KEY
 docker compose up -d --build
+docker compose up -d --build && docker compose logs -f backend # to see backend logs and demo email contents
 ```
 
 - Frontend: `http://localhost:5173`
@@ -107,6 +108,14 @@ docker compose up -d --build
 ```bash
 docker compose down       # stop all services
 docker compose down -v    # stop and wipe database volume
+```
+
+### See logs
+
+```bash
+docker compose logs -f backend   # backend logs
+docker compose logs -f frontend  # frontend logs
+docker compose logs -f mailhog   # email logs (demo mode only)
 ```
 
 > Backend starts slower than frontend — wait a few seconds after `up` before the API is ready.

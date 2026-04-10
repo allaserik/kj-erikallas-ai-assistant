@@ -135,28 +135,35 @@ public class DemoDataInitializer implements ApplicationRunner {
             log.info("Created demo health profile (height: 175cm)");
 
             // 3. Create goals (multiple active + one archived for history testing)
-            GoalEntity activeWeightGoal = new GoalEntity(UUID.randomUUID(), DEMO_USER_ID, GoalType.WEIGHT_LOSS, 75.0, 4,
-                    now.toLocalDate().plusDays(90), "Lose 5kg in 3 months", true, now, now);
+            GoalEntity activeWeightGoal = new GoalEntity(UUID.randomUUID(), DEMO_USER_ID, GoalType.WEIGHT_LOSS, 75.0,
+                    null, now.toLocalDate().plusDays(32), "Lose 7kg over 3 months", true, now.minusDays(58),
+                    now.minusDays(58));
             goalRepo.save(activeWeightGoal);
 
             GoalEntity activeFitnessGoal = new GoalEntity(UUID.randomUUID(), DEMO_USER_ID, GoalType.IMPROVE_FITNESS,
-                    null, 5, now.toLocalDate().plusDays(60), "Reach 5 active days per week", true, now.minusDays(5),
-                    now.minusDays(5));
+                    null, 5, now.toLocalDate().plusDays(23), "Reach 5 active days per week", true, now.minusDays(37),
+                    now.minusDays(37));
             goalRepo.save(activeFitnessGoal);
 
-            GoalEntity archivedGoal = new GoalEntity(UUID.randomUUID(), DEMO_USER_ID, GoalType.IMPROVE_FITNESS, null, 5,
-                    now.toLocalDate().minusDays(10), "Improve weekly training consistency", false, now.minusDays(120),
+            GoalEntity activeMuscleGoal = new GoalEntity(UUID.randomUUID(), DEMO_USER_ID, GoalType.BUILD_MUSCLE, null,
+                    3, now.toLocalDate().plusDays(40), "Add gym strength sessions 3x/week", true, now.minusDays(20),
                     now.minusDays(20));
-            goalRepo.save(archivedGoal);
-            log.info("Created demo goals (multiple active + archived)");
+            goalRepo.save(activeMuscleGoal);
 
-            // 4. Create 30 days of weight entries with realistic progression
+            GoalEntity archivedGoal = new GoalEntity(UUID.randomUUID(), DEMO_USER_ID, GoalType.ENHANCE_ENDURANCE, null,
+                    4, now.toLocalDate().minusDays(25), "Run 5km without stopping", false, now.minusDays(120),
+                    now.minusDays(25));
+            goalRepo.save(archivedGoal);
+            log.info("Created demo goals (3 active + 1 archived success story)");
+
+            // 4. Create 90 days of weight entries with realistic progression
             createWeightEntries(DEMO_USER_ID, now);
-            log.info("Created 30 days of weight entries");
+            log.info("Created 90 days of weight entries");
 
             // 5. Create goal progress history for trend charts and analytics
             createWeightGoalProgressHistory(activeWeightGoal, now);
             createActivityGoalProgressHistory(activeFitnessGoal, now);
+            createMuscleGoalProgressHistory(activeMuscleGoal, now);
             createArchivedGoalProgressHistory(archivedGoal, now);
             log.info("Created goal progress history");
 
@@ -192,18 +199,19 @@ public class DemoDataInitializer implements ApplicationRunner {
     }
 
     private void createWeightEntries(UUID userId, OffsetDateTime baseTime) {
-        // Generate 30 days of weight data, trending downward (weight loss)
-        // Start from 30 days ago, daily measurements
-        double startWeight = 82.5;
-        double dailyVariance = 0.3; // kg of daily fluctuation
+        // Generate 90 days of weight data, trending downward (weight loss goal)
+        // Start from 90 days ago: ~84.5 kg, target trend to ~77.5 today
+        double startWeight = 84.5;
+        double totalLoss = 7.0; // kg lost over 90 days
+        double dailyVariance = 0.25; // kg of daily fluctuation
 
-        for (int daysAgo = 29; daysAgo >= 0; daysAgo--) {
+        for (int daysAgo = 89; daysAgo >= 0; daysAgo--) {
             OffsetDateTime measuredAt = baseTime.minusDays(daysAgo);
 
-            // Overall trend: losing ~0.15kg per day, plus random variation
-            double trendDownward = (29 - daysAgo) * 0.15;
+            // Linear trend + small random noise
+            double progress = (89 - daysAgo) / 89.0;
             double variance = (Math.random() - 0.5) * dailyVariance;
-            double weight = startWeight - trendDownward + variance;
+            double weight = startWeight - (totalLoss * progress) + variance;
 
             WeightEntryEntity entry = new WeightEntryEntity(UUID.randomUUID(), userId, measuredAt,
                     Math.round(weight * 100.0) / 100.0, "Daily weigh-in");
@@ -212,21 +220,22 @@ public class DemoDataInitializer implements ApplicationRunner {
     }
 
     private void createWeightGoalProgressHistory(GoalEntity goal, OffsetDateTime baseTime) {
-        // Progress snapshots over ~8 weeks to support weekly/monthly summary testing.
-        double[] currentWeights = { 82.1, 81.5, 80.9, 80.4, 79.8, 79.1, 78.4, 77.8, 77.2 };
-        int[] progressPercents = { 8, 16, 24, 33, 45, 57, 68, 79, 88 };
+        // Snapshots from day goal was created (58d ago) up to 1 week ago.
+        // Baseline: 84.5 kg, target: 75.0 kg → total delta = 9.5 kg
+        // Progress % = (84.5 - current) / 9.5 * 100
+        double[] currentWeights = { 84.2, 83.6, 83.0, 82.3, 81.5, 80.7, 79.9, 79.2, 78.5 };
+        // days-ago for each snapshot: 56, 49, 42, 35, 28, 21, 14, 7, 0 (today-ish)
+        int[] daysAgoList = { 56, 49, 42, 35, 28, 21, 14, 7, 1 };
 
         for (int i = 0; i < currentWeights.length; i++) {
-            OffsetDateTime ts = baseTime.minusDays(56 - (i * 7));
+            int pct = (int) Math.round((84.5 - currentWeights[i]) / 9.5 * 100);
+            OffsetDateTime ts = baseTime.minusDays(daysAgoList[i]);
+            long daysLeft = java.time.temporal.ChronoUnit.DAYS.between(ts.toLocalDate(), goal.getTargetDate());
             GoalProgressEntity progress = new GoalProgressEntity(UUID.randomUUID(), goal.getId(), goal.getUserId(),
-                    java.math.BigDecimal.valueOf(currentWeights[i]), progressPercents[i], true,
-                    Math.max(0,
-                            (int) java.time.temporal.ChronoUnit.DAYS.between(baseTime,
-                                    goal.getTargetDate().atStartOfDay().atOffset(java.time.ZoneOffset.UTC))),
-                    ts, ts, ts);
-            progress.setMilestonesCompleted(progressPercents[i] / 5);
-            progress.setMilestoneDetails(
-                    List.of(Map.of("percentage", (progressPercents[i] / 5) * 5, "completed_at", ts.toString())));
+                    java.math.BigDecimal.valueOf(currentWeights[i]), pct, true, (int) Math.max(0, daysLeft), ts, ts,
+                    ts);
+            progress.setMilestonesCompleted(pct / 5);
+            progress.setMilestoneDetails(List.of(Map.of("percentage", (pct / 5) * 5, "completed_at", ts.toString())));
             goalProgressRepo.save(progress);
         }
     }
@@ -237,12 +246,30 @@ public class DemoDataInitializer implements ApplicationRunner {
 
         for (int i = 0; i < activityDays.length; i++) {
             OffsetDateTime ts = baseTime.minusDays(35 - (i * 7));
+            long daysLeft = java.time.temporal.ChronoUnit.DAYS.between(ts.toLocalDate(), goal.getTargetDate());
             GoalProgressEntity progress = new GoalProgressEntity(UUID.randomUUID(), goal.getId(), goal.getUserId(),
                     java.math.BigDecimal.valueOf(activityDays[i]), progressPercents[i], true,
-                    Math.max(0,
-                            (int) java.time.temporal.ChronoUnit.DAYS.between(baseTime,
-                                    goal.getTargetDate().atStartOfDay().atOffset(java.time.ZoneOffset.UTC))),
-                    ts, ts, ts);
+                    (int) Math.max(0, daysLeft), ts, ts, ts);
+            progress.setMilestonesCompleted(progressPercents[i] / 5);
+            progress.setMilestoneDetails(
+                    List.of(Map.of("percentage", (progressPercents[i] / 5) * 5, "completed_at", ts.toString())));
+            goalProgressRepo.save(progress);
+        }
+    }
+
+    private void createMuscleGoalProgressHistory(GoalEntity goal, OffsetDateTime baseTime) {
+        // BUILD_MUSCLE: target 3 days/week, ~20 days in, ~33% progress
+        // Just one progress snapshot at 7 days ago showing 1 out of 3 days completed
+        int[] activityDays = { 1 };
+        int[] progressPercents = { 33 };
+        int[] daysAgoList = { 7 };
+
+        for (int i = 0; i < activityDays.length; i++) {
+            OffsetDateTime ts = baseTime.minusDays(daysAgoList[i]);
+            long daysLeft = java.time.temporal.ChronoUnit.DAYS.between(ts.toLocalDate(), goal.getTargetDate());
+            GoalProgressEntity progress = new GoalProgressEntity(UUID.randomUUID(), goal.getId(), goal.getUserId(),
+                    java.math.BigDecimal.valueOf(activityDays[i]), progressPercents[i], true,
+                    (int) Math.max(0, daysLeft), ts, ts, ts);
             progress.setMilestonesCompleted(progressPercents[i] / 5);
             progress.setMilestoneDetails(
                     List.of(Map.of("percentage", (progressPercents[i] / 5) * 5, "completed_at", ts.toString())));
@@ -251,13 +278,19 @@ public class DemoDataInitializer implements ApplicationRunner {
     }
 
     private void createArchivedGoalProgressHistory(GoalEntity goal, OffsetDateTime baseTime) {
-        int[] activityDays = { 2, 3, 3, 4, 5 };
-        int[] progressPercents = { 40, 55, 60, 75, 100 };
+        // ENHANCE_ENDURANCE success story: started ~120d ago, completed ~25d ago at
+        // 100%
+        // 4 activity days/week target; progress snapshots every ~20 days
+        int[] activityDays = { 1, 2, 3, 3, 4 };
+        int[] progressPercents = { 25, 50, 75, 88, 100 };
+        int[] daysAgoList = { 110, 90, 70, 50, 25 };
 
         for (int i = 0; i < activityDays.length; i++) {
-            OffsetDateTime ts = baseTime.minusDays(110 - (i * 10));
+            OffsetDateTime ts = baseTime.minusDays(daysAgoList[i]);
+            long daysLeft = java.time.temporal.ChronoUnit.DAYS.between(ts.toLocalDate(), goal.getTargetDate());
             GoalProgressEntity progress = new GoalProgressEntity(UUID.randomUUID(), goal.getId(), goal.getUserId(),
-                    java.math.BigDecimal.valueOf(activityDays[i]), progressPercents[i], true, 0, ts, ts, ts);
+                    java.math.BigDecimal.valueOf(activityDays[i]), progressPercents[i], true,
+                    (int) Math.max(0, daysLeft), ts, ts, ts);
             progress.setMilestonesCompleted(progressPercents[i] / 5);
             progress.setMilestoneDetails(
                     List.of(Map.of("percentage", (progressPercents[i] / 5) * 5, "completed_at", ts.toString())));
@@ -344,109 +377,121 @@ public class DemoDataInitializer implements ApplicationRunner {
     }
 
     private void createMealLogs(UUID userId, OffsetDateTime now) {
-        // Get available recipes from catalog for variation
-        List<RecipeCatalogModels.RecipeListItem> recipes = recipeQueryRepo.search(
-                new RecipeCatalogModels.RecipeSearchFilters(null, null, null, null, null, null, null, null, null, 100));
-
-        if (recipes.isEmpty()) {
-            log.warn("No recipes available, skipping meal logs");
-            return;
-        }
-
+        // Controlled custom meal logs — predictable macros so the nutrition bar chart
+        // shows a clear pattern relative to the 2000 kcal / 150p / 200c / 67f target.
+        // Weekdays: ~1800 kcal (intentional deficit matching weight-loss goal)
+        // Weekends: ~2200 kcal (slightly over target)
         LocalDate today = LocalDate.now();
 
-        // Pre-define meal times and types
-        Map<String, LocalTime> mealTimesMap = Map.of("BREAKFAST", LocalTime.of(7, 30), "LUNCH", LocalTime.of(12, 30),
-                "SNACK", LocalTime.of(15, 0), "DINNER", LocalTime.of(19, 0));
+        // Meal templates [kcal, proteinG, carbsG, fatsG]
+        // Weekday meals — total ~1800 kcal, ~155g protein, ~195g carbs, ~60g fats
+        double[][] wdBreakfast = { { 380, 32, 40, 10 }, // Scrambled eggs + oats
+                { 340, 28, 38, 9 }, // Greek yogurt parfait
+                { 360, 30, 42, 8 }, // Protein smoothie + toast
+        };
+        double[][] wdLunch = { { 520, 45, 55, 13 }, // Chicken rice bowl
+                { 490, 42, 52, 12 }, // Tuna salad wrap
+                { 510, 44, 54, 13 }, // Turkey & quinoa
+        };
+        double[][] wdDinner = { { 580, 50, 62, 16 }, // Salmon + sweet potato
+                { 560, 48, 60, 15 }, // Lean beef stir-fry
+                { 600, 52, 64, 17 }, // Chicken pasta
+        };
+        double[][] wdSnack = { { 180, 15, 20, 5 }, // Greek yogurt
+                { 200, 20, 22, 8 }, // Protein bar
+                { 170, 13, 18, 6 }, // Cottage cheese
+        };
 
-        // Create 30 days of meal logs with realistic patterns
+        // Weekend meals — total ~2200 kcal, ~160g protein, ~245g carbs, ~78g fats
+        double[][] weBreakfast = { { 480, 35, 52, 14 }, // Full breakfast
+                { 450, 32, 50, 13 }, // Pancakes + eggs
+        };
+        double[][] weLunch = { { 660, 50, 72, 20 }, // Burger + salad
+                { 640, 48, 70, 19 }, // Pizza slice + side
+        };
+        double[][] weDinner = { { 720, 55, 80, 22 }, // BBQ chicken + rice
+                { 700, 52, 78, 21 }, // Pasta bolognese
+        };
+        double[][] weSnack = { { 260, 18, 30, 9 }, // Granola bar + milk
+                { 240, 16, 28, 8 }, // Banana + PB
+        };
+
+        LocalTime breakfastTime = LocalTime.of(7, 30);
+        LocalTime lunchTime = LocalTime.of(12, 30);
+        LocalTime snackTime = LocalTime.of(15, 0);
+        LocalTime dinnerTime = LocalTime.of(19, 0);
+
+        String[] breakfastNames = { "Scrambled Eggs with Oats", "Greek Yogurt Parfait", "Protein Smoothie & Toast",
+                "Full Breakfast", "Pancakes with Eggs" };
+        String[] lunchNames = { "Chicken Rice Bowl", "Tuna Salad Wrap", "Turkey & Quinoa", "Burger & Salad",
+                "Pizza & Side Salad" };
+        String[] dinnerNames = { "Salmon & Sweet Potato", "Lean Beef Stir-fry", "Chicken Pasta", "BBQ Chicken & Rice",
+                "Pasta Bolognese" };
+        String[] snackNames = { "Greek Yogurt", "Protein Bar", "Cottage Cheese", "Granola Bar & Milk",
+                "Banana with Peanut Butter" };
+
         for (int daysAgo = 29; daysAgo >= 0; daysAgo--) {
             LocalDate mealDate = today.minusDays(daysAgo);
-            int dayOfWeek = mealDate.getDayOfWeek().getValue(); // 1=Monday, 7=Sunday
-            boolean isWeekend = dayOfWeek >= 6;
+            int dow = mealDate.getDayOfWeek().getValue(); // 1=Mon, 7=Sun
+            boolean isWeekend = dow >= 6;
+            int v = daysAgo % 3; // variant index cycling 0-1-2
 
-            // Weekday patterns: more consistent, weekends more varied
-            // Some days skip breakfast, some add snacks
-            boolean skipBreakfast = (daysAgo % 5 == 0); // Skip breakfast every 5 days
-            boolean addSnack = (daysAgo % 3 == 1 || isWeekend); // Add snack occasionally and on weekends
-
-            // Log breakfast (unless skipped)
-            if (!skipBreakfast) {
-                logMealVariation(userId, mealDate, "BREAKFAST", mealTimesMap, recipes, daysAgo);
-            }
-
-            // Log lunch
-            logMealVariation(userId, mealDate, "LUNCH", mealTimesMap, recipes, daysAgo + 1);
-
-            // Log snack (if applicable)
-            if (addSnack) {
-                // Mix in some custom snacks for variety
-                if (daysAgo % 4 == 0) {
-                    logCustomSnack(userId, mealDate, mealTimesMap.get("SNACK"));
+            try {
+                double[] bf, lu, sn, di;
+                String bfName, luName, snName, diName;
+                if (isWeekend) {
+                    int wv = daysAgo % 2;
+                    bf = weBreakfast[wv];
+                    bfName = breakfastNames[3 + wv];
+                    lu = weLunch[wv];
+                    luName = lunchNames[3 + wv];
+                    di = weDinner[wv];
+                    diName = dinnerNames[3 + wv];
+                    sn = weSnack[wv];
+                    snName = snackNames[3 + wv];
                 } else {
-                    logMealVariation(userId, mealDate, "SNACK", mealTimesMap, recipes, daysAgo + 2);
+                    bf = wdBreakfast[v];
+                    bfName = breakfastNames[v];
+                    lu = wdLunch[v];
+                    luName = lunchNames[v];
+                    di = wdDinner[v];
+                    diName = dinnerNames[v];
+                    sn = wdSnack[v];
+                    snName = snackNames[v];
                 }
+
+                ZoneOffset tz = ZoneOffset.of("+02:00");
+                // Skip breakfast ~1 in 6 weekdays for realism
+                if (!isWeekend && daysAgo % 6 != 0) {
+                    mealIntakeLogService.logCustomMeal(userId, bfName, "BREAKFAST", BigDecimal.valueOf(bf[0]),
+                            BigDecimal.valueOf(bf[1]), BigDecimal.valueOf(bf[2]), BigDecimal.valueOf(bf[3]), null,
+                            breakfastTime, OffsetDateTime.of(mealDate.atTime(breakfastTime), tz));
+                } else if (isWeekend) {
+                    mealIntakeLogService.logCustomMeal(userId, bfName, "BREAKFAST", BigDecimal.valueOf(bf[0]),
+                            BigDecimal.valueOf(bf[1]), BigDecimal.valueOf(bf[2]), BigDecimal.valueOf(bf[3]), null,
+                            breakfastTime, OffsetDateTime.of(mealDate.atTime(breakfastTime), tz));
+                }
+
+                mealIntakeLogService.logCustomMeal(userId, luName, "LUNCH", BigDecimal.valueOf(lu[0]),
+                        BigDecimal.valueOf(lu[1]), BigDecimal.valueOf(lu[2]), BigDecimal.valueOf(lu[3]), null,
+                        lunchTime, OffsetDateTime.of(mealDate.atTime(lunchTime), tz));
+
+                // Snack on weekends always, weekdays every other day
+                if (isWeekend || daysAgo % 2 == 0) {
+                    mealIntakeLogService.logCustomMeal(userId, snName, "SNACK", BigDecimal.valueOf(sn[0]),
+                            BigDecimal.valueOf(sn[1]), BigDecimal.valueOf(sn[2]), BigDecimal.valueOf(sn[3]), null,
+                            snackTime, OffsetDateTime.of(mealDate.atTime(snackTime), tz));
+                }
+
+                mealIntakeLogService.logCustomMeal(userId, diName, "DINNER", BigDecimal.valueOf(di[0]),
+                        BigDecimal.valueOf(di[1]), BigDecimal.valueOf(di[2]), BigDecimal.valueOf(di[3]), null,
+                        dinnerTime, OffsetDateTime.of(mealDate.atTime(dinnerTime), tz));
+
+            } catch (Exception e) {
+                log.warn("Failed to log meals for date {}: {}", mealDate, e.getMessage());
             }
-
-            // Log dinner
-            logMealVariation(userId, mealDate, "DINNER", mealTimesMap, recipes, daysAgo + 3);
         }
 
-        log.info("Meal intake logs created for 30 days with varied patterns");
-    }
-
-    private void logMealVariation(UUID userId, LocalDate mealDate, String mealType, Map<String, LocalTime> mealTimesMap,
-            List<RecipeCatalogModels.RecipeListItem> recipes, int dayVariant) {
-        try {
-            // Vary recipes based on day
-            RecipeCatalogModels.RecipeListItem recipe = recipes.get(dayVariant % recipes.size());
-
-            // Vary servings: 80% of 1, 50% of 1.2, 30% of 0.8, 20% of 1.5
-            BigDecimal servings;
-            int variation = dayVariant % 10;
-            if (variation < 5) {
-                servings = BigDecimal.ONE;
-            } else if (variation < 7) {
-                servings = new BigDecimal("1.2");
-            } else if (variation < 9) {
-                servings = new BigDecimal("0.8");
-            } else {
-                servings = new BigDecimal("1.5");
-            }
-
-            LocalTime mealTime = mealTimesMap.get(mealType);
-            OffsetDateTime mealDateTime = OffsetDateTime.of(mealDate.atTime(mealTime), ZoneOffset.of("+02:00"));
-
-            mealIntakeLogService.logMealFromRecipe(userId, recipe.id(), servings, mealType, mealTime, mealDateTime);
-            log.debug("Logged {} ({} servings) for {}", mealType, servings, mealDate);
-        } catch (Exception e) {
-            log.warn("Failed to log meal {} for date {}: {}", mealType, mealDate, e.getMessage());
-        }
-    }
-
-    private void logCustomSnack(UUID userId, LocalDate mealDate, LocalTime snackTime) {
-        try {
-            // Define realistic snack options
-            String[] snacks = { "Greek yogurt with berries", "Protein bar", "Apple with almond butter", "Mixed nuts",
-                    "Energy drink", "Granola bar", "Banana", "Cheese and crackers" };
-
-            double[] caloriesKcal = { 180, 200, 220, 190, 150, 160, 105, 200 };
-            double[] proteins = { 15, 20, 8, 6, 2, 5, 1, 8 };
-            double[] carbs = { 20, 22, 25, 8, 35, 22, 27, 18 };
-            double[] fats = { 5, 8, 10, 16, 0, 6, 0, 10 };
-
-            int snackIdx = Math.random() < 0.5 ? 0 : (int) (Math.random() * snacks.length);
-
-            OffsetDateTime snackDateTime = OffsetDateTime.of(mealDate.atTime(snackTime), ZoneOffset.of("+02:00"));
-
-            mealIntakeLogService.logCustomMeal(userId, snacks[snackIdx], "SNACK",
-                    BigDecimal.valueOf(caloriesKcal[snackIdx]), BigDecimal.valueOf(proteins[snackIdx]),
-                    BigDecimal.valueOf(carbs[snackIdx]), BigDecimal.valueOf(fats[snackIdx]), "Demo snack", snackTime,
-                    snackDateTime);
-
-            log.debug("Logged custom snack: {}", snacks[snackIdx]);
-        } catch (Exception e) {
-            log.warn("Failed to log custom snack for date {}: {}", mealDate, e.getMessage());
-        }
+        log.info("Meal intake logs created for 30 days (controlled custom macros)");
     }
 }
