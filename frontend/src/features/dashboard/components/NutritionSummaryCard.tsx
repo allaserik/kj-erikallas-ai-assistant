@@ -122,7 +122,7 @@ export function NutritionSummaryCard({ summary }: { summary: DailySummary }) {
                                 <Cell fill="#f59e0b" />
                                 <Cell fill="#ef4444" />
                             </Pie>
-                            <Tooltip formatter={(value: number) => `${value.toFixed(1)} g`} />
+                            <Tooltip formatter={(value) => `${Number(value).toFixed(1)} g`} />
                             <Legend />
                         </PieChart>
                     </ResponsiveContainer>

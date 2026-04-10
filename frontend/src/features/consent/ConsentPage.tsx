@@ -5,7 +5,7 @@ import { getPrivacyPreferences, upsertPrivacyPreferences } from "../../shared/ap
 import { Alert } from "../../shared/ui/Alert";
 import { Card, CardBody, CardTitle } from "../../shared/ui/Card";
 
-export default function ConsentPage() {
+export default function ConsentPage({ onAccepted }: { onAccepted?: () => void }) {
     const navigate = useNavigate();
     const getToken = useAuthToken();
     const [loading, setLoading] = useState(false);
@@ -26,6 +26,7 @@ export default function ConsentPage() {
                 email_notifications_enabled: current.email_notifications_enabled,
             }, token);
 
+            onAccepted?.();
             navigate("/", { replace: true });
         } catch (e) {
             setError(e instanceof Error ? e.message : "Failed to save consent");

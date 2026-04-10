@@ -1,4 +1,5 @@
 import './App.css';
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AppShell from './layout/AppShell';
 import DashboardPage from './features/dashboard/DashboardPage';
@@ -48,9 +49,10 @@ import { getPrivacyPreferences } from './shared/api/privacy';
  */
 function LoggedInContent() {
   const location = useLocation();
-  const privacyQ = useAuthedQuery(`consent:${location.pathname}`, getPrivacyPreferences, true);
-  const hasConsent = !!privacyQ.data?.data_usage_consent;
-  const consentLoading = privacyQ.loading;
+  const [consentGranted, setConsentGranted] = useState(false);
+  const privacyQ = useAuthedQuery(`consent:${location.pathname}`, getPrivacyPreferences, !consentGranted);
+  const hasConsent = consentGranted || !!privacyQ.data?.data_usage_consent;
+  const consentLoading = !consentGranted && privacyQ.loading;
 
   // Show loading screen while checking consent status
   if (consentLoading) {
@@ -61,7 +63,7 @@ function LoggedInContent() {
   if (!hasConsent) {
     return (
       <Routes>
-        <Route path="*" element={<ConsentPage />} />
+        <Route path="*" element={<ConsentPage onAccepted={() => setConsentGranted(true)} />} />
       </Routes>
     );
   }
