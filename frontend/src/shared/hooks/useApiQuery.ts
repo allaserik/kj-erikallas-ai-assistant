@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { explainApiError } from "../api/errors";
 
 export function useApiQuery<T>(key: string, fn: () => Promise<T>, enabled: boolean) {
     const [data, setData] = useState<T | null>(null);
@@ -23,7 +24,7 @@ export function useApiQuery<T>(key: string, fn: () => Promise<T>, enabled: boole
                 if (!cancelled) setData(d);
             })
             .catch((e) => {
-                if (!cancelled) setError(e instanceof Error ? e : new Error("Unknown error"));
+                if (!cancelled) setError(e instanceof Error ? e : new Error(explainApiError(e)));
             })
             .finally(() => {
                 if (!cancelled) setLoading(false);

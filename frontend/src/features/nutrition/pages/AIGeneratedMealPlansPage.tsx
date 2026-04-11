@@ -16,7 +16,9 @@ export default function AIGeneratedMealPlansPage() {
 
     // Get token on mount
     useEffect(() => {
-        getToken().then(setToken);
+        getToken()
+            .then(setToken)
+            .catch(() => setError("Could not load authentication token. Please refresh the page."));
     }, [getToken]);
 
     // Form state

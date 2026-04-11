@@ -90,8 +90,11 @@ export default function RecipeExplorerPage() {
                 const options = await getNutritionOptions(token);
                 setDietaryOptions(options.dietaryPreferences || []);
                 setAllergyOptions(options.allergies || []);
-            } catch {
+            } catch (e) {
                 setDietaryOptions([]);
+                setAllergyOptions([]);
+                // Non-fatal: filters will just have no pre-populated options
+                console.warn("[RecipeExplorer] Could not load filter options:", e instanceof Error ? e.message : e);
             } finally {
                 runSearch();
             }

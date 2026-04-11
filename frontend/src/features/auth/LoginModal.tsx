@@ -3,6 +3,8 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { EmailPasswordForm } from "./EmailPasswordForm";
 import { loginUser } from "../../api/auth";
 import { DEMO_MODE } from "../../shared/config";
+import { Alert } from "../../shared/ui/Alert";
+import { explainApiError } from "../../shared/api/errors";
 
 // LoginModal: Full-screen calming overlay for unauthenticated users
 // Supports both Auth0 OAuth and email/password authentication
@@ -11,22 +13,19 @@ export function LoginModal() {
     const [authMode, setAuthMode] = useState<'demo' | 'oauth' | 'email'>(DEMO_MODE ? 'demo' : 'oauth');
     const [emailMode, setEmailMode] = useState<'login' | 'register'>('login');
     const [isDemoLoading, setIsDemoLoading] = useState(false);
+    const [demoError, setDemoError] = useState<string | null>(null);
 
     // Demo login handler - uses email/password auth instead of OAuth
     const handleDemoLogin = async () => {
         setIsDemoLoading(true);
+        setDemoError(null);
         try {
             const response = await loginUser("demo@example.com", "demo@example.com");
-
-            // Store token in localStorage
             localStorage.setItem("accessToken", response.accessToken);
             localStorage.setItem("refreshToken", response.refreshToken);
-            // Dispatch auth changed event for AuthContext to pick up
             window.dispatchEvent(new Event("localAuthChanged"));
-            // Modal will disappear when auth state updates
-        } catch (error) {
-            console.error("Demo login failed:", error);
-            alert("Demo login failed. Please try again.");
+        } catch (e) {
+            setDemoError(explainApiError(e));
         } finally {
             setIsDemoLoading(false);
         }
@@ -93,6 +92,7 @@ export function LoginModal() {
                                 <div><strong>Password:</strong> demo@example.com</div>
                             </div>
                         </div>
+                        {demoError && <Alert tone="error" message={demoError} />}
                         <button
                             className="w-full px-6 py-3 rounded-lg bg-purple-600 text-white font-semibold shadow hover:bg-purple-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
                             onClick={handleDemoLogin}

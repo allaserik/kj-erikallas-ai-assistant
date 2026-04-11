@@ -4,6 +4,8 @@ import { useAuthToken } from "../../../shared/auth/useAuthToken";
 import { getMealPlanById, type GeneratedMealPlan, type MealPlanMealItem } from "../../../shared/api/mealPlans";
 import { MealManagementUI } from "./MealManagementUI";
 import { ShoppingList } from "../components/ShoppingList";
+import { Alert } from "../../../shared/ui/Alert";
+import { Spinner } from "../../../shared/ui/Spinner";
 
 /**
  * MealPlanDetailPage: Shows a complete generated meal plan
@@ -48,18 +50,20 @@ export default function MealPlanDetailPage() {
     }, [mealPlanId, getToken, refreshKey]);
 
     if (loading) {
-        return <div className="text-center text-slate-600 py-12">Loading meal plan...</div>;
+        return (
+            <div className="py-12 flex justify-center">
+                <Spinner label="Loading meal plan..." />
+            </div>
+        );
     }
 
     if (error) {
         return (
-            <div className="text-center py-12">
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 inline-block">
-                    {error}
-                </div>
+            <div className="space-y-4 p-4">
+                <Alert tone="error" title="Could not load meal plan" message={error} />
                 <button
                     onClick={() => navigate("/planner")}
-                    className="mt-4 text-slate-600 hover:text-slate-900"
+                    className="text-sm text-slate-600 hover:text-slate-900"
                 >
                     ← Back to Meal Plans
                 </button>

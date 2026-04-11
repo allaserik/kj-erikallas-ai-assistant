@@ -59,7 +59,9 @@ export function MealManagementUI({ date, onMealsUpdated }: MealManagementUIProps
 
     // Get token on mount
     useEffect(() => {
-        getToken().then(setToken);
+        getToken()
+            .then(setToken)
+            .catch(() => setError("Could not load authentication token. Please refresh the page."));
     }, [getToken]);
 
     // Load meals and recipes when token is available

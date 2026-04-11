@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAppAuth } from "../../../shared/auth/AuthContext";
 import { useAuthToken } from "../../../shared/auth/useAuthToken";
 import { getLatestMealPlan, type GeneratedMealPlan } from "../../../shared/api/mealPlans";
+import { Alert } from "../../../shared/ui/Alert";
 import { Link } from "react-router-dom";
 
 /**
@@ -13,6 +14,7 @@ export default function MealPlansHubPage() {
     const getToken = useAuthToken();
     const [token, setToken] = useState<string | null>(null);
     const [latestPlan, setLatestPlan] = useState<GeneratedMealPlan | null>(null);
+    const [planLoadError, setPlanLoadError] = useState<string | null>(null);
 
     useEffect(() => {
         getToken().then(setToken);
@@ -23,7 +25,8 @@ export default function MealPlansHubPage() {
 
         getLatestMealPlan(token)
             .then(setLatestPlan)
-            .catch(() => {
+            .catch((e) => {
+                setPlanLoadError(e instanceof Error ? e.message : "Could not load your current plan.");
                 setLatestPlan(null);
             });
     }, [token]);
@@ -34,6 +37,9 @@ export default function MealPlansHubPage() {
 
     return (
         <div className="space-y-6">
+            {planLoadError && (
+                <Alert tone="error" title="Could not load meal plan" message={planLoadError} />
+            )}
             {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold text-slate-900">Meal Plans</h1>

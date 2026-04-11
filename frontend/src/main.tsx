@@ -5,6 +5,7 @@ import App from './App.tsx'
 import { Auth0Provider } from '@auth0/auth0-react'
 import { AuthProvider } from './shared/auth/AuthContext'
 import { AUTH0_AUDIENCE } from './shared/config'
+import { ErrorBoundary } from './shared/ui/ErrorBoundary'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -19,9 +20,11 @@ createRoot(document.getElementById('root')!).render(
       cacheLocation="localstorage"
       useRefreshTokens={true}
     >
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </ErrorBoundary>
     </Auth0Provider>
   </StrictMode>,
 )

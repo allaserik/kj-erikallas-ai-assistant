@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { useAuthedQuery } from "../../shared/auth/useAuthedQuery";
 import { getAllGoals, createGoal, updateGoal, deleteGoal } from "../../shared/api/goals";
 import { useAppAuth } from "../../shared/auth/AuthContext";
+import { explainApiError } from "../../shared/api/errors";
 import type { Goal } from "../../shared/types";
 
 export interface GoalsState {
@@ -9,6 +10,7 @@ export interface GoalsState {
     activeGoals: Goal[];
     isLoading: boolean;
     error: Error | null;
+    mutationError: string | null;
     isCreating: boolean;
     isUpdating: boolean;
     isDeleting: boolean;
@@ -19,6 +21,7 @@ export function useGoalsData() {
     const [isCreating, setIsCreating] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [mutationError, setMutationError] = useState<string | null>(null);
     const refetchCounterRef = useRef(0);
     const [refetchCounter, setRefetchCounter] = useState(0);
 
@@ -41,6 +44,7 @@ export function useGoalsData() {
             if (!token) return;
 
             setIsCreating(true);
+            setMutationError(null);
             try {
                 const newGoal: Omit<Goal, "id" | "userId" | "createdAt" | "updatedAt"> = {
                     title: goalType,
@@ -54,8 +58,10 @@ export function useGoalsData() {
                 };
 
                 await createGoal(newGoal, token);
-                // Refetch goals to show the new goal immediately
                 refetch();
+            } catch (e) {
+                setMutationError(explainApiError(e));
+                throw e;
             } finally {
                 setIsCreating(false);
             }
@@ -69,10 +75,13 @@ export function useGoalsData() {
             if (!token) return;
 
             setIsUpdating(true);
+            setMutationError(null);
             try {
                 await updateGoal(goalId, updates, token);
-                // Refetch goals to show the updated goal immediately
                 refetch();
+            } catch (e) {
+                setMutationError(explainApiError(e));
+                throw e;
             } finally {
                 setIsUpdating(false);
             }
@@ -86,10 +95,13 @@ export function useGoalsData() {
             if (!token) return;
 
             setIsDeleting(true);
+            setMutationError(null);
             try {
                 await deleteGoal(goalId, token);
-                // Refetch goals to remove the deleted goal immediately
                 refetch();
+            } catch (e) {
+                setMutationError(explainApiError(e));
+                throw e;
             } finally {
                 setIsDeleting(false);
             }
@@ -102,6 +114,7 @@ export function useGoalsData() {
         activeGoals,
         isLoading,
         error,
+        mutationError,
         isCreating,
         isUpdating,
         isDeleting,

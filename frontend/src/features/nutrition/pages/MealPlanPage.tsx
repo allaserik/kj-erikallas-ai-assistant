@@ -108,8 +108,8 @@ export default function MealPlanPage() {
             const v = await listMealPlanVersions(result.mealPlanId, token);
             setVersions(v);
             setShowVersions(true);
-        } catch {
-            // ignore — versions panel stays closed
+        } catch (e) {
+            setError(e instanceof Error ? e.message : "Could not load version history. Please try again.");
         } finally {
             setVersionsLoading(false);
         }
@@ -123,7 +123,6 @@ export default function MealPlanPage() {
             const token = await getToken();
             if (!token) return;
             await restoreMealPlanVersion(result.mealPlanId, versionId, token);
-            // Reload the plan after restore
             const updated = await getLatestMealPlan(token);
             if (updated) {
                 setResult(updated);
@@ -132,8 +131,8 @@ export default function MealPlanPage() {
             setShowVersions(false);
             setVersions([]);
             setRefreshKey(k => k + 1);
-        } catch {
-            // ignore
+        } catch (e) {
+            setError(e instanceof Error ? e.message : "Could not restore this version. Please try again.");
         } finally {
             setRestoringVersionId(null);
         }

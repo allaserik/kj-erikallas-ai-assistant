@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Input } from "../../shared/ui/Input";
 import { Button } from "../../shared/ui/Button";
+import { Alert } from "../../shared/ui/Alert";
 
 interface LoginFormProps {
     onSubmit: (email: string, password: string) => void;
@@ -33,7 +34,7 @@ export function LoginForm({ onSubmit, loading, error }: LoginFormProps) {
                 onChange={e => setPassword(e.target.value)}
                 required
             />
-            {error && <div className="text-red-600 text-sm">{error}</div>}
+            {error && <Alert tone="error" message={error} />}
             <Button type="submit" fullWidth disabled={loading}>
                 {loading ? "Logging in..." : "Login"}
             </Button>

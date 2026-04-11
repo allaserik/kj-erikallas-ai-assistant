@@ -14,7 +14,7 @@ import type { Goal } from "../../shared/types";
 export default function GoalsPage() {
     const { isAuthenticated } = useAppAuth();
     const getToken = useAuthToken();
-    const { activeGoals, allGoals, isLoading, error, isCreating, isDeleting, createNewGoal, updateExistingGoal, deleteExistingGoal } = useGoalsData();
+    const { activeGoals, allGoals, isLoading, error, mutationError, isCreating, isDeleting, createNewGoal, updateExistingGoal, deleteExistingGoal } = useGoalsData();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
 
@@ -25,22 +25,23 @@ export default function GoalsPage() {
     const handleCreateGoal = async (goalType: string, targetWeightKg?: number, targetActivityDays?: number, notes?: string, targetDate?: string) => {
         const token = await getToken();
         if (!token) return;
-        if (editingGoal) {
-            await updateExistingGoal(editingGoal.id, { goalType: goalType as Goal["goalType"], targetValue: targetWeightKg, targetActivityDaysPerWeek: targetActivityDays, description: notes, targetDate }, token);
-            setEditingGoal(null);
-        } else {
-            await createNewGoal(goalType, targetWeightKg, targetActivityDays, notes, targetDate, token);
+        try {
+            if (editingGoal) {
+                await updateExistingGoal(editingGoal.id, { goalType: goalType as Goal["goalType"], targetValue: targetWeightKg, targetActivityDaysPerWeek: targetActivityDays, description: notes, targetDate }, token);
+                setEditingGoal(null);
+            } else {
+                await createNewGoal(goalType, targetWeightKg, targetActivityDays, notes, targetDate, token);
+            }
+            setIsCreateModalOpen(false);
+        } catch {
+            // mutationError is set by useGoalsData; modal stays open so user can see the error
         }
     };
 
     const handleArchiveGoal = async (goalId: string) => {
         const token = await getToken();
         if (!token) return;
-        try {
-            await updateExistingGoal(goalId, { isActive: false }, token);
-        } catch (error) {
-            console.error("Failed to archive goal:", error);
-        }
+        await updateExistingGoal(goalId, { isActive: false }, token);
     };
 
     const handleEditGoal = (goal: Goal) => {
@@ -83,6 +84,11 @@ export default function GoalsPage() {
             {/* Error State */}
             {error && !isLoading && (
                 <Alert tone="error" title="Error Loading Goals" message={error.message || "Failed to load goals."} />
+            )}
+
+            {/* Mutation Error Banner */}
+            {mutationError && !isLoading && (
+                <Alert tone="error" title="Action Failed" message={mutationError} />
             )}
 
             {/* Content */}
